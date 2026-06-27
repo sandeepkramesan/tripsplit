@@ -7,3 +7,5 @@ TripSplit is a simple web app that helps friends split trip expenses fairly. Ent
 Visit the live site here:
 
 **https://sandeepkramesan.github.io/tripsplit/**
+
+### by FTW.
