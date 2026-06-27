@@ -2,8 +2,25 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>TripSplit ✈️</title>
+
+<!-- ── PWA ── -->
+<link rel="manifest" href="/tripsplit/manifest.json">
+<meta name="theme-color" content="#060b14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TripSplit">
+<link rel="apple-touch-icon" href="/tripsplit/icons/icon-192.png">
+
+<!-- ── SEO / Social ── -->
+<meta name="description" content="Split trip bills with friends and settle up in seconds.">
+<meta property="og:title" content="TripSplit ✈️">
+<meta property="og:description" content="Split trip bills with friends and settle up in seconds.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://sandeepkramesan.github.io/tripsplit/">
+
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Pacifico&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -1019,6 +1036,75 @@ function esc(s) {
     addFriend(); addFriend();
   }
 })();
+</script>
+
+<!-- ── PWA: Service Worker Registration ── -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/tripsplit/sw.js')
+      .then(reg => console.log('TripSplit SW registered:', reg.scope))
+      .catch(err => console.warn('SW registration failed:', err));
+  });
+}
+
+// ── PWA: Install prompt banner ──────────────────────────
+let deferredPrompt = null;
+const installBanner = document.createElement('div');
+installBanner.id = 'installBanner';
+installBanner.innerHTML = `
+  <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+    <span style="font-size:26px">✈️</span>
+    <div>
+      <div style="font-weight:700;font-size:14px;color:#e8f4ff">Install TripSplit</div>
+      <div style="font-size:12px;color:#5a7a9a;margin-top:1px">Add to home screen for offline use</div>
+    </div>
+  </div>
+  <button id="installYes" style="
+    background:linear-gradient(135deg,#38bdf8,#fb7185);
+    color:#fff;border:none;border-radius:10px;
+    padding:9px 16px;font-size:13px;font-weight:700;
+    font-family:'Space Grotesk',sans-serif;cursor:pointer;
+    white-space:nowrap;flex-shrink:0
+  ">Install</button>
+  <button id="installNo" style="
+    background:transparent;border:none;color:#5a7a9a;
+    font-size:20px;cursor:pointer;padding:4px 6px;flex-shrink:0
+  ">✕</button>
+`;
+Object.assign(installBanner.style, {
+  position:'fixed', bottom:'0', left:'0', right:'0',
+  background:'#0d1525',
+  borderTop:'1px solid rgba(56,189,248,0.2)',
+  padding:'14px 18px',
+  display:'none', alignItems:'center', gap:'12px',
+  zIndex:'200',
+  boxShadow:'0 -4px 30px rgba(0,0,0,0.4)',
+  fontFamily:"'Space Grotesk',sans-serif"
+});
+document.body.appendChild(installBanner);
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installBanner.style.display = 'flex';
+});
+
+document.addEventListener('click', e => {
+  if (e.target.id === 'installYes' && deferredPrompt) {
+    installBanner.style.display = 'none';
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+  }
+  if (e.target.id === 'installNo') {
+    installBanner.style.display = 'none';
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  installBanner.style.display = 'none';
+  deferredPrompt = null;
+});
 </script>
 </body>
 </html>
