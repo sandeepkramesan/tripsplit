@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TripSplit ✈️</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Pacifico&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  /* new palette: deep ocean night */
+  --bg:       #060b14;
+  --card:     #0d1525;
+  --card2:    #101d30;
+  --card3:    #0a1220;
+  --border:   rgba(255,255,255,0.06);
+  --border2:  rgba(255,255,255,0.1);
+
+  /* accents: coral + sky + lime + gold */
+  --coral:    #ff6b6b;
+  --sky:      #38bdf8;
+  --lime:     #a3e635;
+  --gold:     #fbbf24;
+  --rose:     #fb7185;
+  --mint:     #34d399;
+
+  --text:     #e8f4ff;
+  --muted:    #5a7a9a;
+  --muted2:   #3a5570;
+
+  --font:     'Space Grotesk',sans-serif;
+  --hand:     'Caveat',cursive;
+  --display:  'Pacifico',cursive;
+}
+
+body{
+  background:var(--bg);
+  font-family:var(--font);
+  color:var(--text);
+  min-height:100vh;
+  padding:30px 20px 120px;
+  position:relative;
+  overflow-x:hidden;
+}
+
+/* ── layered bg: dot grid + radial glow ── */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 70% 50% at 20% 10%, rgba(56,189,248,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(251,113,133,0.06) 0%, transparent 60%),
+    radial-gradient(rgba(56,189,248,0.06) 1px, transparent 1px);
+  background-size:100% 100%, 100% 100%, 32px 32px;
+  pointer-events:none;z-index:0;
+}
+
+/* ── SVG doodle canvas fixed in bg ── */
+.doodle-canvas{
+  position:fixed;inset:0;
+  pointer-events:none;z-index:0;
+  width:100%;height:100%;
+  overflow:hidden;
+}
+
+/* emoji doodles */
+.doodle{
+  position:fixed;pointer-events:none;z-index:0;
+  user-select:none;line-height:1;
+}
+.doodle.d1  {top:3%;   left:2%;   font-size:72px;  opacity:.055; transform:rotate(-22deg);}
+.doodle.d2  {top:12%;  right:3%;  font-size:60px;  opacity:.05;  transform:rotate(16deg); }
+.doodle.d3  {top:28%;  left:0%;   font-size:52px;  opacity:.05;  transform:rotate(8deg);  }
+.doodle.d4  {top:38%;  right:1%;  font-size:80px;  opacity:.04;  transform:rotate(-12deg);}
+.doodle.d5  {top:55%;  left:3%;   font-size:58px;  opacity:.05;  transform:rotate(18deg); }
+.doodle.d6  {top:62%;  right:2%;  font-size:66px;  opacity:.05;  transform:rotate(-6deg); }
+.doodle.d7  {top:76%;  left:1%;   font-size:70px;  opacity:.045; transform:rotate(12deg); }
+.doodle.d8  {top:82%;  right:4%;  font-size:55px;  opacity:.05;  transform:rotate(-18deg);}
+.doodle.d9  {top:20%;  left:46%;  font-size:44px;  opacity:.025; transform:rotate(5deg);  }
+.doodle.d10 {top:70%;  left:44%;  font-size:48px;  opacity:.025; transform:rotate(-8deg); }
+
+/* ── container ── */
+.container{max-width:680px;margin:auto;position:relative;z-index:1;}
+
+/* ════════ HEADER ════════ */
+.header{text-align:center;margin-bottom:40px;padding-top:10px;}
+
+.logo-wrap{position:relative;display:inline-block;margin-bottom:16px;}
+
+.logo-ring{
+  width:100px;height:100px;
+  border-radius:50%;
+  background:linear-gradient(135deg,rgba(56,189,248,.14),rgba(251,113,133,.12));
+  border:2px solid rgba(56,189,248,.35);
+  display:flex;align-items:center;justify-content:center;
+  font-size:44px;
+  position:relative;
+  animation:float 4.5s ease-in-out infinite;
+  box-shadow:0 0 0 8px rgba(56,189,248,.04),0 0 50px rgba(56,189,248,.1);
+}
+
+.logo-orbit{
+  position:absolute;inset:-14px;
+  border-radius:50%;
+  border:1.5px dashed rgba(56,189,248,.2);
+  animation:orbit-spin 12s linear infinite;
+}
+.logo-dot{
+  position:absolute;width:8px;height:8px;
+  border-radius:50%;background:var(--sky);
+  top:-4px;left:50%;transform:translateX(-50%);
+  box-shadow:0 0 8px var(--sky);
+}
+
+.badge{
+  position:absolute;font-size:16px;
+  animation:badge-bounce 2.5s ease-in-out infinite;
+}
+.badge.b1{top:-8px;right:-10px;animation-delay:0s;}
+.badge.b2{bottom:-6px;left:-8px;animation-delay:1.2s;}
+
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes orbit-spin{to{transform:rotate(360deg)}}
+@keyframes badge-bounce{0%,100%{transform:scale(1) rotate(0deg)}50%{transform:scale(1.25) rotate(15deg)}}
+
+.header h1{
+  font-family:var(--display);
+  font-size:54px;line-height:1;
+  letter-spacing:1.5px;
+  margin-bottom:8px;
+  background:linear-gradient(120deg,var(--sky) 0%,var(--coral) 45%,var(--lime) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  filter:drop-shadow(0 2px 16px rgba(56,189,248,.2));
+}
+
+.header-sub{
+  font-family:var(--hand);font-size:20px;
+  color:var(--muted);
+}
+
+.sticker-row{
+  display:flex;justify-content:center;gap:12px;
+  margin-top:14px;font-size:22px;
+}
+.sticker-row span{
+  display:inline-block;
+  animation:pop 3.2s ease-in-out infinite;
+  cursor:default;
+}
+.sticker-row span:nth-child(1){animation-delay:.0s}
+.sticker-row span:nth-child(2){animation-delay:.35s}
+.sticker-row span:nth-child(3){animation-delay:.7s}
+.sticker-row span:nth-child(4){animation-delay:1.05s}
+.sticker-row span:nth-child(5){animation-delay:1.4s}
+.sticker-row span:nth-child(6){animation-delay:1.75s}
+@keyframes pop{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.2) rotate(10deg)}}
+
+/* ════════ CARD ════════ */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:22px;
+  padding:24px 26px;
+  margin-bottom:14px;
+  position:relative;overflow:hidden;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--sky),var(--coral),var(--lime));
+  border-radius:22px 22px 0 0;
+}
+
+.card-label{
+  font-size:10px;font-weight:700;
+  letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--sky);margin-bottom:14px;
+  display:flex;align-items:center;gap:7px;
+}
+
+/* ════════ INPUTS ════════ */
+input[type="text"],input[type="number"],select{
+  width:100%;
+  background:var(--card3);
+  border:1px solid var(--border2);
+  border-radius:12px;
+  padding:12px 15px;
+  font-size:14px;color:var(--text);
+  font-family:var(--font);
+  transition:border-color .2s,box-shadow .2s;
+  outline:none;
+  -webkit-appearance:none;
+}
+input::placeholder{color:var(--muted)}
+input:focus,select:focus{
+  border-color:var(--sky);
+  box-shadow:0 0 0 3px rgba(56,189,248,.12);
+}
+select{cursor:pointer;}
+select option{background:var(--card2);}
+
+/* ════════ FRIENDS ════════ */
+.friends-list{display:flex;flex-direction:column;gap:8px;}
+
+.friend-row{
+  display:grid;grid-template-columns:1fr 44px;
+  gap:10px;align-items:center;
+  background:var(--card2);border:1px solid var(--border);
+  border-radius:14px;padding:10px 14px;
+  transition:border-color .2s;
+}
+.friend-row:hover{border-color:rgba(56,189,248,.25);}
+
+.friend-inner{display:flex;align-items:center;gap:10px;}
+
+.friend-avatar{
+  width:30px;height:30px;border-radius:50%;
+  background:linear-gradient(135deg,var(--sky),var(--coral));
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;color:#fff;flex-shrink:0;
+}
+
+.friend-row input{
+  background:transparent;
+  border:1px solid rgba(255,255,255,.06);
+  padding:9px 12px;font-size:14px;border-radius:10px;width:100%;
+}
+.friend-row input:focus{
+  border-color:var(--sky);
+  box-shadow:0 0 0 2px rgba(56,189,248,.1);
+}
+
+/* ════════ EXPENSE LOG INPUT ROW ════════ */
+.exp-input-grid{
+  display:grid;
+  grid-template-columns:1fr 120px 130px 44px;
+  gap:8px;align-items:center;
+  background:var(--card2);border:1px solid rgba(163,230,53,.15);
+  border-radius:14px;padding:10px 12px;
+  margin-bottom:12px;
+}
+.exp-input-grid input,
+.exp-input-grid select{
+  background:transparent;
+  border:1px solid rgba(255,255,255,.06);
+  padding:9px 11px;font-size:13px;border-radius:10px;
+}
+.exp-input-grid input:focus,
+.exp-input-grid select:focus{
+  border-color:var(--lime);
+  box-shadow:0 0 0 2px rgba(163,230,53,.12);
+}
+
+/* ════════ SAVED EXPENSE ROWS ════════ */
+.log-saved-row{
+  background:var(--card2);
+  border:1px solid var(--border);
+  border-left:3px solid var(--lime);
+  border-radius:13px;padding:12px 14px;
+  display:flex;justify-content:space-between;align-items:center;
+  gap:10px;margin-bottom:7px;
+  animation:slide-in .25s ease;
+}
+@keyframes slide-in{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+
+.log-saved-meta{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;}
+.log-saved-desc{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.log-saved-sub{font-size:11px;color:var(--muted);font-family:var(--hand);font-size:13px;}
+
+.log-saved-right{text-align:right;flex-shrink:0;}
+.log-saved-amt{font-size:16px;font-weight:700;color:var(--gold);}
+.log-saved-who{font-size:12px;color:var(--mint);}
+
+.log-del-btn{
+  background:rgba(255,107,107,.1);
+  border:1px solid rgba(255,107,107,.18);
+  color:var(--coral);border-radius:8px;
+  width:30px;height:30px;font-size:12px;
+  cursor:pointer;transition:all .2s;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.log-del-btn:hover{background:rgba(255,107,107,.22);transform:scale(1.08);}
+
+.no-expenses{
+  text-align:center;padding:22px 10px;
+  color:var(--muted);font-family:var(--hand);font-size:17px;
+  border:1.5px dashed var(--border2);border-radius:14px;
+}
+
+/* ════════ RUNNING TOTALS ════════ */
+.person-totals{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.person-chip{
+  background:var(--card3);border:1px solid var(--border2);
+  border-radius:30px;padding:5px 14px;
+  font-size:13px;display:flex;align-items:center;gap:7px;
+}
+.chip-name{color:var(--muted);}
+.chip-amt{color:var(--gold);font-weight:600;}
+
+/* ════════ BUTTONS ════════ */
+.action-row{display:flex;gap:10px;margin-top:14px;}
+
+.btn{
+  border:none;border-radius:13px;
+  padding:13px 18px;font-size:14px;font-weight:600;
+  font-family:var(--font);cursor:pointer;
+  transition:all .2s;letter-spacing:.3px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn:hover{transform:translateY(-2px);}
+.btn:active{transform:translateY(0);}
+
+.btn-add-friend{
+  background:rgba(56,189,248,.1);color:var(--sky);
+  border:1px solid rgba(56,189,248,.22);flex:1;
+}
+.btn-add-friend:hover{background:rgba(56,189,248,.18);box-shadow:0 4px 20px rgba(56,189,248,.12);}
+
+.btn-add-exp{
+  background:rgba(163,230,53,.1);color:var(--lime);
+  border:1px solid rgba(163,230,53,.22);
+  width:44px;height:44px;padding:0;border-radius:11px;
+  font-size:22px;flex-shrink:0;
+}
+.btn-add-exp:hover{background:rgba(163,230,53,.2);box-shadow:0 4px 18px rgba(163,230,53,.12);}
+
+.btn-split{
+  background:linear-gradient(135deg,var(--sky),var(--coral));
+  color:#fff;width:100%;margin-top:6px;
+  box-shadow:0 4px 24px rgba(56,189,248,.18);
+  font-size:15px;padding:15px;border-radius:15px;border:none;
+}
+.btn-split:hover{box-shadow:0 6px 34px rgba(56,189,248,.35);}
+
+.btn-clear{
+  background:rgba(255,107,107,.09);color:var(--coral);
+  border:1px solid rgba(255,107,107,.22);
+  width:100%;margin-top:10px;padding:13px;
+  font-size:14px;font-weight:600;border-radius:13px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  cursor:pointer;transition:all .2s;font-family:var(--font);
+}
+.btn-clear:hover{background:rgba(255,107,107,.18);transform:translateY(-1px);}
+
+.btn-copy{
+  width:100%;margin-top:2px;
+  background:rgba(52,211,153,.1);color:var(--mint);
+  border:1px solid rgba(52,211,153,.25);
+  border-radius:13px;padding:14px;
+  font-size:14px;font-weight:600;
+  font-family:var(--font);cursor:pointer;
+  transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-copy:hover{background:rgba(52,211,153,.18);transform:translateY(-1px);}
+
+.remove-btn{
+  background:rgba(255,107,107,.1);
+  border:1px solid rgba(255,107,107,.2);
+  color:var(--coral);border-radius:10px;
+  width:44px;height:44px;font-size:15px;
+  cursor:pointer;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.remove-btn:hover{background:rgba(255,107,107,.22);transform:scale(1.06);}
+
+/* ════════ SUMMARY ════════ */
+.summary-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:22px;padding:26px;
+  display:none;position:relative;overflow:hidden;margin-top:14px;
+}
+.summary-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--mint),var(--sky),var(--rose));
+  border-radius:22px 22px 0 0;
+}
+
+.summary-title{
+  font-size:10px;font-weight:700;
+  letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--mint);margin-bottom:20px;
+}
+
+.stats-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:12px;margin-bottom:24px;
+}
+.stat-box{
+  background:var(--card2);border:1px solid var(--border);
+  border-radius:14px;padding:16px 12px;text-align:center;
+}
+.stat-val{font-size:20px;font-weight:700;color:var(--gold);line-height:1;margin-bottom:5px;}
+.stat-key{font-size:11px;color:var(--muted);letter-spacing:.5px;}
+
+.txn-label{
+  font-size:10px;font-weight:700;
+  letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--rose);margin-bottom:12px;
+}
+
+.payment{
+  background:var(--card2);border:1px solid var(--border);
+  border-left:3px solid var(--sky);
+  border-radius:12px;padding:12px 16px;
+  margin-bottom:8px;font-size:14px;
+  display:flex;align-items:center;gap:8px;
+}
+.payment .arrow{color:var(--muted);font-size:15px;}
+.payment .amt{color:var(--gold);font-weight:700;margin-left:auto;}
+.payment .payer{font-weight:600;}
+.payment .receiver{font-weight:600;color:var(--mint);}
+
+.wa-label{
+  font-size:10px;font-weight:700;
+  letter-spacing:2.5px;text-transform:uppercase;
+  color:#25D366;margin-bottom:12px;margin-top:22px;
+}
+
+textarea{
+  width:100%;background:var(--card3);
+  border:1px solid var(--border2);
+  border-radius:14px;padding:15px;
+  min-height:210px;color:var(--muted);
+  font-size:13px;font-family:'Courier New',monospace;
+  resize:none;outline:none;line-height:1.65;margin-bottom:14px;
+}
+
+/* ════════ DIVIDER ════════ */
+.divider{height:1px;background:var(--border);margin:22px 0;}
+
+/* ════════ FOOTER ════════ */
+.footer{
+  text-align:center;margin-top:44px;
+  font-family:var(--hand);font-size:19px;color:var(--muted2);
+}
+.footer .heart{color:#fb923c;}
+.footer .brand{color:rgba(56,189,248,.5);font-weight:700;}
+
+/* ════════ FTW CORNER ════════ */
+.ftw-corner{
+  position:fixed;bottom:18px;right:20px;
+  font-family:var(--display);font-size:19px;
+  color:rgba(56,189,248,.25);
+  pointer-events:none;z-index:100;letter-spacing:1px;
+  transition:color .3s;
+}
+
+/* ════════ MODAL CONFIRM ════════ */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);
+  z-index:500;display:none;
+  align-items:center;justify-content:center;
+  backdrop-filter:blur(4px);
+}
+.modal-overlay.show{display:flex;}
+.modal-box{
+  background:var(--card);border:1px solid var(--border2);
+  border-radius:22px;padding:32px 28px;
+  max-width:360px;width:90%;text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+  animation:modal-in .25s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes modal-in{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-icon{font-size:42px;margin-bottom:12px;}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text);}
+.modal-sub{font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.5;}
+.modal-btns{display:flex;gap:10px;}
+.modal-cancel{
+  flex:1;background:var(--card2);color:var(--muted);
+  border:1px solid var(--border2);border-radius:12px;
+  padding:12px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;
+  transition:all .2s;
+}
+.modal-cancel:hover{background:var(--card3);}
+.modal-confirm{
+  flex:1;background:linear-gradient(135deg,var(--coral),var(--rose));
+  color:#fff;border:none;border-radius:12px;
+  padding:12px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;
+  transition:all .2s;
+}
+.modal-confirm:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(255,107,107,.3);}
+
+/* ════════ TOAST ════════ */
+.toast{
+  position:fixed;bottom:28px;left:50%;
+  transform:translateX(-50%) translateY(90px);
+  background:var(--card2);
+  border:1px solid rgba(52,211,153,.3);
+  color:var(--mint);border-radius:12px;
+  padding:12px 24px;font-size:14px;font-weight:600;
+  z-index:999;transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  pointer-events:none;white-space:nowrap;
+  box-shadow:0 8px 30px rgba(0,0,0,.4);
+}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ════════ RESPONSIVE ════════ */
+@media(max-width:580px){
+  body{padding:16px 12px 110px;}
+  .header h1{font-size:42px;}
+  .stats-grid{grid-template-columns:1fr 1fr;}
+  .action-row{flex-direction:column;}
+  .exp-input-grid{grid-template-columns:1fr 1fr;grid-template-rows:auto auto;}
+  .exp-input-grid .btn-add-exp{grid-column:2;justify-self:end;}
+}
+</style>
+</head>
+<body>
+
+<!-- SVG inline doodles in background -->
+<svg class="doodle-canvas" xmlns="http://www.w3.org/2000/svg">
+  <!-- dotted flight path arc top-left to bottom-right -->
+  <path d="M -20 80 Q 200 -30 420 120 Q 640 270 900 180"
+        fill="none" stroke="rgba(56,189,248,0.06)" stroke-width="1.5"
+        stroke-dasharray="6 10"/>
+  <!-- curved path bottom-left -->
+  <path d="M 0 600 Q 150 450 300 550 Q 450 650 700 480"
+        fill="none" stroke="rgba(251,113,133,0.05)" stroke-width="1.5"
+        stroke-dasharray="5 8"/>
+  <!-- small star cluster top-right -->
+  <g fill="rgba(251,191,36,0.08)">
+    <circle cx="88%" cy="8%"  r="2"/>
+    <circle cx="90%" cy="12%" r="3"/>
+    <circle cx="85%" cy="14%" r="1.5"/>
+    <circle cx="93%" cy="10%" r="1.5"/>
+  </g>
+  <!-- small star cluster bottom-left -->
+  <g fill="rgba(56,189,248,0.07)">
+    <circle cx="8%"  cy="85%" r="2"/>
+    <circle cx="5%"  cy="88%" r="3"/>
+    <circle cx="11%" cy="90%" r="1.5"/>
+  </g>
+  <!-- compass rose outline -->
+  <g transform="translate(92%,50%)" stroke="rgba(163,230,53,0.06)" stroke-width="1" fill="none">
+    <circle cx="0" cy="0" r="30"/>
+    <line x1="0" y1="-30" x2="0" y2="30"/>
+    <line x1="-30" y1="0" x2="30" y2="0"/>
+    <line x1="-21" y1="-21" x2="21" y2="21"/>
+    <line x1="21" y1="-21" x2="-21" y2="21"/>
+  </g>
+  <!-- stamp circle bottom-right area -->
+  <circle cx="88%" cy="75%" r="38"
+          fill="none" stroke="rgba(251,113,133,0.05)" stroke-width="1.5"
+          stroke-dasharray="4 6"/>
+</svg>
+
+<!-- emoji doodles -->
+<div class="doodle d1">✈️</div>
+<div class="doodle d2">🗺️</div>
+<div class="doodle d3">🧳</div>
+<div class="doodle d4">🌍</div>
+<div class="doodle d5">🏔️</div>
+<div class="doodle d6">🧭</div>
+<div class="doodle d7">🌊</div>
+<div class="doodle d8">🏖️</div>
+<div class="doodle d9">⭐</div>
+<div class="doodle d10">🌙</div>
+
+<!-- Clear data confirm modal -->
+<div class="modal-overlay" id="clearModal">
+  <div class="modal-box">
+    <div class="modal-icon">🗑️</div>
+    <div class="modal-title">Clear all trip data?</div>
+    <div class="modal-sub">This will erase all travellers, expenses and the trip name. Can't undo this one!</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" id="modalCancel">Keep it</button>
+      <button class="modal-confirm" id="modalConfirm">Yes, clear</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ── HEADER ── -->
+  <div class="header">
+    <div class="logo-wrap">
+      <div class="logo-ring">
+        ✈️
+        <div class="logo-orbit"><div class="logo-dot"></div></div>
+        <span class="badge b1">⭐</span>
+        <span class="badge b2">🌴</span>
+      </div>
+    </div>
+    <h1>TripSplit</h1>
+    <p class="header-sub">Split bills. Keep the memories.</p>
+    <div class="sticker-row">
+      <span>🌴</span><span>🛂</span><span>📸</span>
+      <span>🌅</span><span>🍹</span><span>🗺️</span>
+    </div>
+  </div>
+
+  <!-- ── TRIP NAME ── -->
+  <div class="card">
+    <div class="card-label">📍 Trip Details</div>
+    <input type="text" id="tripName" placeholder="e.g. Goa Squad 2026 🏖️">
+  </div>
+
+  <!-- ── TRAVELLERS ── -->
+  <div class="card">
+    <div class="card-label">👥 Who's Coming?</div>
+    <div class="friends-list" id="friendsList"></div>
+    <div class="action-row">
+      <button class="btn btn-add-friend" id="addFriendBtn">＋ Add Traveller</button>
+    </div>
+  </div>
+
+  <!-- ── EXPENSE LOG ── -->
+  <div class="card">
+    <div class="card-label">🧾 Expense Log</div>
+
+    <!-- input row -->
+    <div class="exp-input-grid">
+      <input type="text"   id="expDesc"  placeholder="What was it? (e.g. Dinner 🍜)">
+      <input type="number" id="expAmt"   placeholder="₹ Amount" min="0" step="0.01">
+      <select id="expPayer"><option value="">Paid by…</option></select>
+      <button class="btn btn-add-exp" id="logExpBtn" title="Add expense">＋</button>
+    </div>
+
+    <!-- saved entries -->
+    <div id="expenseEntries"></div>
+
+    <!-- per-person running totals -->
+    <div id="personTotalsWrap" style="display:none">
+      <div class="divider"></div>
+      <div class="card-label" style="margin-bottom:8px;color:var(--gold)">💼 Running Totals</div>
+      <div class="person-totals" id="personTotals"></div>
+    </div>
+  </div>
+
+  <!-- ── SPLIT + CLEAR ── -->
+  <button class="btn btn-split" id="splitBtn">💰 Calculate Split</button>
+  <button class="btn-clear" id="clearBtn">🗑️ Clear Trip Data</button>
+
+  <!-- ── SUMMARY ── -->
+  <div class="summary-card" id="summary">
+    <div class="summary-title">🧾 Trip Summary</div>
+    <div class="stats-grid">
+      <div class="stat-box"><div class="stat-val" id="totalExpense">₹0</div><div class="stat-key">Total Spent</div></div>
+      <div class="stat-box"><div class="stat-val" id="friendCount">0</div><div class="stat-key">Travellers</div></div>
+      <div class="stat-box"><div class="stat-val" id="shareAmount">₹0</div><div class="stat-key">Per Person</div></div>
+    </div>
+    <div class="txn-label">💸 Who Pays Whom</div>
+    <div id="payments"></div>
+    <div class="divider"></div>
+    <div class="wa-label">📲 WhatsApp Summary</div>
+    <textarea id="summaryText" readonly></textarea>
+    <button class="btn-copy" id="copyBtn">📋 Copy Summary</button>
+  </div>
+
+  <div class="footer">made with <span class="heart">🧡</span> by <span class="brand">FTW.</span></div>
+</div>
+
+<div class="ftw-corner">ftw.</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════ STATE ════════
+const LS_KEY = 'tripsplit_v1';
+let friends  = [];
+let expenses = [];
+let nextFId  = 1;
+let nextEId  = 1;
+
+// ════════ DOM ════════
+const friendsList     = document.getElementById('friendsList');
+const addFriendBtn    = document.getElementById('addFriendBtn');
+const expPayer        = document.getElementById('expPayer');
+const expDesc         = document.getElementById('expDesc');
+const expAmt          = document.getElementById('expAmt');
+const logExpBtn       = document.getElementById('logExpBtn');
+const expenseEntries  = document.getElementById('expenseEntries');
+const personTotals    = document.getElementById('personTotals');
+const personTotalsWrap= document.getElementById('personTotalsWrap');
+const splitBtn        = document.getElementById('splitBtn');
+const clearBtn        = document.getElementById('clearBtn');
+const clearModal      = document.getElementById('clearModal');
+const modalCancel     = document.getElementById('modalCancel');
+const modalConfirm    = document.getElementById('modalConfirm');
+const toast           = document.getElementById('toast');
+
+// ════════ LOCALSTORAGE ════════
+function saveState() {
+  try {
+    const tripName = document.getElementById('tripName').value;
+    localStorage.setItem(LS_KEY, JSON.stringify({
+      tripName, friends, expenses, nextFId, nextEId
+    }));
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    nextFId  = s.nextFId  || 1;
+    nextEId  = s.nextEId  || 1;
+    friends  = s.friends  || [];
+    expenses = s.expenses || [];
+    if (s.tripName) document.getElementById('tripName').value = s.tripName;
+    return true;
+  } catch(e) { return false; }
+}
+
+function clearState() {
+  localStorage.removeItem(LS_KEY);
+  friends  = [];
+  expenses = [];
+  nextFId  = 1;
+  nextEId  = 1;
+}
+
+// auto-save on tripName change
+document.getElementById('tripName').addEventListener('input', saveState);
+
+// ════════ FRIENDS ════════
+addFriendBtn.addEventListener('click', () => { addFriend(); saveState(); });
+
+function addFriend(data) {
+  const f = data || { id: nextFId++, name: '' };
+  if (!data) friends.push(f);
+  renderFriendRow(f);
+  rebuildPayerSelect();
+  updatePersonTotals();
+}
+
+function renderFriendRow(f) {
+  const row = document.createElement('div');
+  row.className = 'friend-row';
+  row.dataset.fid = f.id;
+
+  const inner = document.createElement('div');
+  inner.className = 'friend-inner';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'friend-avatar';
+  avatar.textContent = f.name ? f.name[0].toUpperCase() : '?';
+
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.placeholder = 'Traveller name';
+  inp.value = f.name;
+  inp.addEventListener('input', e => {
+    f.name = e.target.value.trim();
+    avatar.textContent = f.name ? f.name[0].toUpperCase() : '?';
+    rebuildPayerSelect();
+    updatePersonTotals();
+    saveState();
+  });
+
+  inner.appendChild(avatar);
+  inner.appendChild(inp);
+
+  const del = document.createElement('button');
+  del.className = 'remove-btn'; del.innerHTML = '✕';
+  del.addEventListener('click', () => {
+    friends = friends.filter(x => x.id !== f.id);
+    row.remove();
+    rebuildPayerSelect();
+    updatePersonTotals();
+    saveState();
+  });
+
+  row.appendChild(inner);
+  row.appendChild(del);
+  friendsList.appendChild(row);
+  if (!f.name) inp.focus();
+}
+
+function rebuildPayerSelect() {
+  const prev = expPayer.value;
+  expPayer.innerHTML = '<option value="">Paid by…</option>';
+  friends.filter(f => f.name).forEach(f => {
+    const o = document.createElement('option');
+    o.value = f.name; o.textContent = f.name;
+    if (f.name === prev) o.selected = true;
+    expPayer.appendChild(o);
+  });
+}
+
+// ════════ EXPENSE LOG ════════
+logExpBtn.addEventListener('click', logExpense);
+[expDesc, expAmt].forEach(el =>
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') logExpense(); })
+);
+
+function logExpense() {
+  const desc  = expDesc.value.trim();
+  const amt   = parseFloat(expAmt.value);
+  const payer = expPayer.value;
+  if (!desc)       { showToast('✏️ Add a description!','var(--gold)','rgba(251,191,36,.3)'); expDesc.focus(); return; }
+  if (!amt||amt<=0){ showToast('💸 Enter an amount!','var(--gold)','rgba(251,191,36,.3)'); expAmt.focus(); return; }
+  if (!payer)      { showToast('👤 Who paid?','var(--gold)','rgba(251,191,36,.3)'); expPayer.focus(); return; }
+
+  const now = new Date();
+  const ts  = now.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})
+             +' · '+now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+
+  const entry = { id: nextEId++, desc, payer, amount: amt, ts };
+  expenses.push(entry);
+  renderExpenseEntry(entry);
+  updatePersonTotals();
+  saveState();
+
+  expDesc.value = ''; expAmt.value = '';
+  expDesc.focus();
+}
+
+function renderExpenseEntry(e) {
+  const empty = expenseEntries.querySelector('.no-expenses');
+  if (empty) empty.remove();
+
+  const row = document.createElement('div');
+  row.className = 'log-saved-row';
+  row.dataset.eid = e.id;
+  row.innerHTML = `
+    <div class="log-saved-meta">
+      <span class="log-saved-desc">${esc(e.desc)}</span>
+      <span class="log-saved-sub">${esc(e.ts)}</span>
+    </div>
+    <div class="log-saved-right">
+      <div class="log-saved-amt">₹${e.amount.toFixed(2)}</div>
+      <div class="log-saved-who">${esc(e.payer)}</div>
+    </div>
+    <button class="log-del-btn" title="Remove">✕</button>`;
+
+  row.querySelector('.log-del-btn').addEventListener('click', () => {
+    expenses = expenses.filter(x => x.id !== e.id);
+    row.remove();
+    if (!expenses.length) showNoExpenses();
+    updatePersonTotals();
+    saveState();
+  });
+  expenseEntries.appendChild(row);
+}
+
+function showNoExpenses() {
+  const el = document.createElement('div');
+  el.className = 'no-expenses';
+  el.textContent = 'No expenses yet — add your first one above 👆';
+  expenseEntries.appendChild(el);
+}
+
+function updatePersonTotals() {
+  const named = friends.filter(f => f.name);
+  if (!named.length || !expenses.length) { personTotalsWrap.style.display='none'; return; }
+  personTotalsWrap.style.display = 'block';
+  personTotals.innerHTML = '';
+  named.forEach(f => {
+    const tot = expenses.filter(e => e.payer===f.name).reduce((s,e)=>s+e.amount,0);
+    const chip = document.createElement('div');
+    chip.className = 'person-chip';
+    chip.innerHTML = `<span class="chip-name">${esc(f.name)}</span><span class="chip-amt">₹${tot.toFixed(2)}</span>`;
+    personTotals.appendChild(chip);
+  });
+}
+
+// ════════ SPLIT ════════
+splitBtn.addEventListener('click', calculateSplit);
+
+function calculateSplit() {
+  const named = friends.filter(f => f.name);
+  if (named.length < 2) { showToast('👥 Add at least 2 travellers!','var(--coral)','rgba(255,107,107,.3)'); return; }
+  if (!expenses.length)  { showToast('🧾 Log at least one expense!','var(--coral)','rgba(255,107,107,.3)'); return; }
+
+  const paidMap = {};
+  named.forEach(f => paidMap[f.name] = 0);
+  expenses.forEach(e => { if (paidMap[e.payer] !== undefined) paidMap[e.payer] += e.amount; });
+
+  const total  = Object.values(paidMap).reduce((s,v)=>s+v,0);
+  const share  = total / named.length;
+  const people = named.map(f => ({ name:f.name, paid:paidMap[f.name] }));
+
+  let creditors=[], debtors=[];
+  people.forEach(p => {
+    const bal = +(p.paid - share).toFixed(2);
+    if (bal > 0.01)  creditors.push({ name:p.name, amount:bal });
+    else if (bal < -0.01) debtors.push({ name:p.name, amount:-bal });
+  });
+
+  let transactions=[], i=0, j=0;
+  while (i<debtors.length && j<creditors.length) {
+    const pay = +Math.min(debtors[i].amount, creditors[j].amount).toFixed(2);
+    transactions.push({ from:debtors[i].name, to:creditors[j].name, amount:pay });
+    debtors[i].amount  = +(debtors[i].amount  - pay).toFixed(2);
+    creditors[j].amount= +(creditors[j].amount - pay).toFixed(2);
+    if (debtors[i].amount   <= 0.01) i++;
+    if (creditors[j].amount <= 0.01) j++;
+  }
+
+  showSummary(people, total, share, transactions);
+}
+
+function showSummary(people, total, share, transactions) {
+  const el = document.getElementById('summary');
+  el.style.display = 'block';
+  setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),60);
+
+  document.getElementById('totalExpense').textContent = '₹'+total.toFixed(2);
+  document.getElementById('friendCount').textContent  = people.length;
+  document.getElementById('shareAmount').textContent  = '₹'+share.toFixed(2);
+
+  const payments = document.getElementById('payments');
+  payments.innerHTML = '';
+  if (!transactions.length) {
+    payments.innerHTML = "<div class='payment' style='border-left-color:var(--mint)'>🎉 Everyone's already settled up!</div>";
+  } else {
+    transactions.forEach(t => {
+      const d = document.createElement('div');
+      d.className = 'payment';
+      d.innerHTML = `<span class="payer">${esc(t.from)}</span><span class="arrow">→</span><span class="receiver">${esc(t.to)}</span><span class="amt">₹${t.amount.toFixed(2)}</span>`;
+      payments.appendChild(d);
+    });
+  }
+  generateWhatsApp(people, total, share, transactions);
+}
+
+function generateWhatsApp(people, total, share, transactions) {
+  const trip = document.getElementById('tripName').value.trim() || 'Our Trip';
+  let t = `✈️ ${trip}\n\n`;
+  t += `💰 Total Expense : ₹${total.toFixed(2)}\n`;
+  t += `👥 Travellers    : ${people.length}\n`;
+  t += `🧾 Per Person    : ₹${share.toFixed(2)}\n\n`;
+  t += `📋 Expense Log\n`;
+  expenses.forEach(e => { t += `• ${e.desc} — ₹${e.amount.toFixed(2)} (${e.payer}) [${e.ts}]\n`; });
+  t += `\n💸 Who Pays Whom\n`;
+  if (!transactions.length) { t += 'Everyone has already paid equally! 🎉'; }
+  else { transactions.forEach(x => { t += `• ${x.from} → ${x.to} : ₹${x.amount.toFixed(2)}\n`; }); }
+  t += `\n\nGenerated by TripSplit ✈️ · ftw.`;
+  document.getElementById('summaryText').value = t;
+}
+
+// ════════ COPY — robust fallback ════════
+document.getElementById('copyBtn').addEventListener('click', async () => {
+  const text = document.getElementById('summaryText').value;
+  if (!text.trim()) {
+    showToast('⚠️ Nothing to copy yet!','var(--gold)','rgba(251,191,36,.3)');
+    return;
+  }
+
+  // Method 1: modern clipboard API
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('✅ Copied to clipboard!','var(--mint)','rgba(52,211,153,.3)');
+      return;
+    } catch(err) { /* fall through */ }
+  }
+
+  // Method 2: execCommand fallback (works in files:// and older browsers)
+  try {
+    const ta = document.getElementById('summaryText');
+    ta.removeAttribute('readonly');
+    ta.select();
+    ta.setSelectionRange(0, 99999);
+    const ok = document.execCommand('copy');
+    ta.setAttribute('readonly', '');
+    ta.blur();
+    if (ok) { showToast('✅ Copied to clipboard!','var(--mint)','rgba(52,211,153,.3)'); return; }
+  } catch(e) {}
+
+  showToast('❌ Copy failed — select text manually','var(--coral)','rgba(255,107,107,.3)');
+});
+
+// ════════ CLEAR MODAL ════════
+clearBtn.addEventListener('click', () => clearModal.classList.add('show'));
+modalCancel.addEventListener('click', () => clearModal.classList.remove('show'));
+clearModal.addEventListener('click', e => { if(e.target===clearModal) clearModal.classList.remove('show'); });
+modalConfirm.addEventListener('click', () => {
+  clearState();
+  clearModal.classList.remove('show');
+
+  // reset UI
+  friendsList.innerHTML     = '';
+  expenseEntries.innerHTML  = '';
+  personTotals.innerHTML    = '';
+  personTotalsWrap.style.display = 'none';
+  document.getElementById('tripName').value   = '';
+  document.getElementById('expDesc').value    = '';
+  document.getElementById('expAmt').value     = '';
+  document.getElementById('summary').style.display = 'none';
+  rebuildPayerSelect();
+  showNoExpenses();
+
+  // fresh start with 2 blank travellers
+  addFriend(); addFriend();
+  showToast('🗑️ Trip cleared! Start fresh 🌟','var(--sky)','rgba(56,189,248,.3)');
+});
+
+// ════════ UTILS ════════
+function showToast(msg, color, border) {
+  toast.textContent = msg;
+  toast.style.color = color;
+  toast.style.borderColor = border;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2800);
+}
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ════════ BOOT ════════
+(function init() {
+  const hadData = loadState();
+  if (hadData && friends.length) {
+    friends.forEach(f => renderFriendRow(f));
+    expenses.forEach(e => renderExpenseEntry(e));
+    rebuildPayerSelect();
+    updatePersonTotals();
+    if (!expenses.length) showNoExpenses();
+  } else {
+    showNoExpenses();
+    addFriend({ id: nextFId++, name: '' });
+    friends.push(friends[friends.length-1] || { id: nextFId++, name: '' });
+    // clean restart — render 2 blank rows
+    friendsList.innerHTML = '';
+    friends = [];
+    nextFId = 1;
+    addFriend(); addFriend();
+  }
+})();
+</script>
+</body>
+</html>
