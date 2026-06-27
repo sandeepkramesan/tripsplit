@@ -249,24 +249,99 @@ select option{background:var(--card2);}
 
 /* ════════ EXPENSE LOG INPUT ROW ════════ */
 .exp-input-grid{
-  display:grid;
-  grid-template-columns:1fr 120px 130px 44px;
-  gap:8px;align-items:center;
   background:var(--card2);border:1px solid rgba(163,230,53,.15);
-  border-radius:14px;padding:10px 12px;
+  border-radius:16px;padding:12px 14px;
   margin-bottom:12px;
+  display:flex;flex-direction:column;gap:8px;
+}
+.exp-row-top{
+  display:grid;
+  grid-template-columns:1fr 110px;
+  gap:8px;
+}
+.exp-row-bottom{
+  display:grid;
+  grid-template-columns:1fr 1fr 44px;
+  gap:8px;align-items:start;
 }
 .exp-input-grid input,
 .exp-input-grid select{
-  background:transparent;
-  border:1px solid rgba(255,255,255,.06);
+  background:var(--card3);
+  border:1px solid rgba(255,255,255,.08);
   padding:9px 11px;font-size:13px;border-radius:10px;
+  width:100%;
 }
 .exp-input-grid input:focus,
 .exp-input-grid select:focus{
   border-color:var(--lime);
   box-shadow:0 0 0 2px rgba(163,230,53,.12);
 }
+
+/* ── Paid For multi-select pill UI ── */
+.paid-for-wrap{ position:relative; }
+.paid-for-trigger{
+  background:var(--card3);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:10px;
+  padding:9px 11px;
+  font-size:13px;color:var(--muted);
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:space-between;gap:6px;
+  min-height:40px;
+  transition:border-color .2s,box-shadow .2s;
+  user-select:none;
+  font-family:var(--font);
+}
+.paid-for-trigger.open{
+  border-color:var(--lime);
+  box-shadow:0 0 0 2px rgba(163,230,53,.12);
+  color:var(--text);
+}
+.paid-for-trigger .trigger-label{
+  flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;
+}
+.paid-for-trigger .trigger-arrow{
+  flex-shrink:0;font-size:10px;color:var(--muted);transition:transform .2s;
+}
+.paid-for-trigger.open .trigger-arrow{ transform:rotate(180deg); }
+
+.paid-for-dropdown{
+  position:absolute;top:calc(100% + 5px);left:0;right:0;
+  background:var(--card2);
+  border:1px solid rgba(163,230,53,.28);
+  border-radius:13px;z-index:50;overflow:hidden;
+  box-shadow:0 10px 36px rgba(0,0,0,.5);
+  display:none;
+}
+.paid-for-dropdown.open{ display:block; }
+
+.pf-all-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:9px 14px;cursor:pointer;
+  font-size:11px;font-weight:700;letter-spacing:1.5px;
+  color:var(--lime);text-transform:uppercase;
+  border-bottom:1px solid var(--border);
+}
+.pf-all-row:hover{ background:rgba(163,230,53,.07); }
+
+.paid-for-option{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;cursor:pointer;
+  font-size:13px;color:var(--text);
+  transition:background .15s;
+  border-bottom:1px solid var(--border);
+}
+.paid-for-option:last-child{ border-bottom:none; }
+.paid-for-option:hover{ background:rgba(163,230,53,.06); }
+.paid-for-option.selected{ color:var(--lime); }
+
+.pf-check{
+  width:16px;height:16px;border-radius:5px;flex-shrink:0;
+  border:1.5px solid var(--muted2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;transition:all .15s;
+}
+.paid-for-option.selected .pf-check{ background:var(--lime);border-color:var(--lime);color:#000; }
 
 /* ════════ SAVED EXPENSE ROWS ════════ */
 .log-saved-row{
@@ -287,6 +362,7 @@ select option{background:var(--card2);}
 .log-saved-right{text-align:right;flex-shrink:0;}
 .log-saved-amt{font-size:16px;font-weight:700;color:var(--gold);}
 .log-saved-who{font-size:12px;color:var(--mint);}
+.log-saved-for{font-size:11px;color:var(--muted);margin-top:1px;}
 
 .log-del-btn{
   background:rgba(255,107,107,.1);
@@ -628,10 +704,26 @@ textarea{
 
     <!-- input row -->
     <div class="exp-input-grid">
-      <input type="text"   id="expDesc"  placeholder="What was it? (e.g. Dinner 🍜)">
-      <input type="number" id="expAmt"   placeholder="₹ Amount" min="0" step="0.01">
-      <select id="expPayer"><option value="">Paid by…</option></select>
-      <button class="btn btn-add-exp" id="logExpBtn" title="Add expense">＋</button>
+      <div class="exp-row-top">
+        <input type="text"   id="expDesc" placeholder="What was it? (e.g. Dinner 🍜)">
+        <input type="number" id="expAmt"  placeholder="₹ Amount" min="0" step="0.01">
+      </div>
+      <div class="exp-row-bottom">
+        <select id="expPayer"><option value="">Paid by…</option></select>
+        <div class="paid-for-wrap" id="paidForWrap">
+          <div class="paid-for-trigger" id="paidForTrigger" tabindex="0">
+            <span class="trigger-label" id="paidForLabel">Paid for… (all)</span>
+            <span class="trigger-arrow">▼</span>
+          </div>
+          <div class="paid-for-dropdown" id="paidForDropdown">
+            <div class="pf-all-row" id="paidForAll">
+              <span>Select all</span><span id="paidForAllCheck">✓</span>
+            </div>
+            <!-- options injected by JS -->
+          </div>
+        </div>
+        <button class="btn btn-add-exp" id="logExpBtn" title="Add expense">＋</button>
+      </div>
     </div>
 
     <!-- saved entries -->
@@ -673,28 +765,34 @@ textarea{
 
 <script>
 // ════════ STATE ════════
-const LS_KEY = 'tripsplit_v1';
-let friends  = [];
-let expenses = [];
-let nextFId  = 1;
-let nextEId  = 1;
+const LS_KEY = 'tripsplit_v2';
+let friends   = [];
+let expenses  = [];
+let nextFId   = 1;
+let nextEId   = 1;
+let paidForSelected = new Set(); // set of names currently selected in the paid-for dropdown
 
 // ════════ DOM ════════
-const friendsList     = document.getElementById('friendsList');
-const addFriendBtn    = document.getElementById('addFriendBtn');
-const expPayer        = document.getElementById('expPayer');
-const expDesc         = document.getElementById('expDesc');
-const expAmt          = document.getElementById('expAmt');
-const logExpBtn       = document.getElementById('logExpBtn');
-const expenseEntries  = document.getElementById('expenseEntries');
-const personTotals    = document.getElementById('personTotals');
-const personTotalsWrap= document.getElementById('personTotalsWrap');
-const splitBtn        = document.getElementById('splitBtn');
-const clearBtn        = document.getElementById('clearBtn');
-const clearModal      = document.getElementById('clearModal');
-const modalCancel     = document.getElementById('modalCancel');
-const modalConfirm    = document.getElementById('modalConfirm');
-const toast           = document.getElementById('toast');
+const friendsList      = document.getElementById('friendsList');
+const addFriendBtn     = document.getElementById('addFriendBtn');
+const expPayer         = document.getElementById('expPayer');
+const expDesc          = document.getElementById('expDesc');
+const expAmt           = document.getElementById('expAmt');
+const logExpBtn        = document.getElementById('logExpBtn');
+const expenseEntries   = document.getElementById('expenseEntries');
+const personTotals     = document.getElementById('personTotals');
+const personTotalsWrap = document.getElementById('personTotalsWrap');
+const splitBtn         = document.getElementById('splitBtn');
+const clearBtn         = document.getElementById('clearBtn');
+const clearModal       = document.getElementById('clearModal');
+const modalCancel      = document.getElementById('modalCancel');
+const modalConfirm     = document.getElementById('modalConfirm');
+const toast            = document.getElementById('toast');
+const paidForTrigger   = document.getElementById('paidForTrigger');
+const paidForDropdown  = document.getElementById('paidForDropdown');
+const paidForLabel     = document.getElementById('paidForLabel');
+const paidForAll       = document.getElementById('paidForAll');
+const paidForAllCheck  = document.getElementById('paidForAllCheck');
 
 // ════════ LOCALSTORAGE ════════
 function saveState() {
@@ -793,7 +891,94 @@ function rebuildPayerSelect() {
     if (f.name === prev) o.selected = true;
     expPayer.appendChild(o);
   });
+  rebuildPaidForDropdown();
 }
+
+// ── Paid For dropdown ──────────────────────────────────
+function rebuildPaidForDropdown() {
+  // clear existing options (keep pf-all-row)
+  const existing = paidForDropdown.querySelectorAll('.pf-opt');
+  existing.forEach(el => el.remove());
+
+  const named = friends.filter(f => f.name);
+
+  // prune paidForSelected to only existing names
+  [...paidForSelected].forEach(n => {
+    if (!named.find(f => f.name === n)) paidForSelected.delete(n);
+  });
+
+  named.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'paid-for-option pf-opt' + (paidForSelected.size === 0 || paidForSelected.has(f.name) ? ' selected' : '');
+    row.dataset.name = f.name;
+    row.innerHTML = `<div class="pf-check">${paidForSelected.size === 0 || paidForSelected.has(f.name) ? '✓' : ''}</div><span>${esc(f.name)}</span>`;
+    row.addEventListener('click', () => togglePaidFor(f.name));
+    paidForDropdown.appendChild(row);
+  });
+
+  updatePaidForLabel();
+}
+
+function togglePaidFor(name) {
+  const named = friends.filter(f => f.name);
+  // if currently "all" (empty set = everyone), switch to explicit set minus this one
+  if (paidForSelected.size === 0) {
+    named.forEach(f => { if (f.name !== name) paidForSelected.add(f.name); });
+  } else {
+    if (paidForSelected.has(name)) {
+      paidForSelected.delete(name);
+      // if now empty, that would mean no one — keep at least 1
+      if (paidForSelected.size === 0) paidForSelected.add(name);
+    } else {
+      paidForSelected.add(name);
+      // if all named are selected, normalise back to "all" (empty set)
+      if (paidForSelected.size === named.length) paidForSelected.clear();
+    }
+  }
+  rebuildPaidForDropdown();
+}
+
+function selectAllPaidFor() {
+  paidForSelected.clear(); // empty = all
+  rebuildPaidForDropdown();
+}
+
+function updatePaidForLabel() {
+  const named = friends.filter(f => f.name);
+  if (paidForSelected.size === 0 || paidForSelected.size === named.length) {
+    paidForLabel.textContent = 'Everyone';
+    paidForAllCheck.textContent = '✓';
+    // update all option rows to selected
+    paidForDropdown.querySelectorAll('.pf-opt').forEach(r => {
+      r.classList.add('selected');
+      r.querySelector('.pf-check').textContent = '✓';
+    });
+  } else {
+    const names = [...paidForSelected];
+    paidForLabel.textContent = names.length === 1 ? names[0] : names.join(', ');
+    paidForAllCheck.textContent = '';
+    paidForDropdown.querySelectorAll('.pf-opt').forEach(r => {
+      const sel = paidForSelected.has(r.dataset.name);
+      r.classList.toggle('selected', sel);
+      r.querySelector('.pf-check').textContent = sel ? '✓' : '';
+    });
+  }
+}
+
+// toggle dropdown open/close
+paidForTrigger.addEventListener('click', e => {
+  e.stopPropagation();
+  const isOpen = paidForDropdown.classList.contains('open');
+  paidForDropdown.classList.toggle('open', !isOpen);
+  paidForTrigger.classList.toggle('open', !isOpen);
+});
+paidForAll.addEventListener('click', e => { e.stopPropagation(); selectAllPaidFor(); });
+document.addEventListener('click', e => {
+  if (!paidForTrigger.contains(e.target) && !paidForDropdown.contains(e.target)) {
+    paidForDropdown.classList.remove('open');
+    paidForTrigger.classList.remove('open');
+  }
+});
 
 // ════════ EXPENSE LOG ════════
 logExpBtn.addEventListener('click', logExpense);
@@ -805,21 +990,28 @@ function logExpense() {
   const desc  = expDesc.value.trim();
   const amt   = parseFloat(expAmt.value);
   const payer = expPayer.value;
-  if (!desc)       { showToast('✏️ Add a description!','var(--gold)','rgba(251,191,36,.3)'); expDesc.focus(); return; }
-  if (!amt||amt<=0){ showToast('💸 Enter an amount!','var(--gold)','rgba(251,191,36,.3)'); expAmt.focus(); return; }
-  if (!payer)      { showToast('👤 Who paid?','var(--gold)','rgba(251,191,36,.3)'); expPayer.focus(); return; }
+  if (!desc)        { showToast('✏️ Add a description!','var(--gold)','rgba(251,191,36,.3)'); expDesc.focus(); return; }
+  if (!amt||amt<=0) { showToast('💸 Enter an amount!','var(--gold)','rgba(251,191,36,.3)'); expAmt.focus(); return; }
+  if (!payer)       { showToast('👤 Who paid?','var(--gold)','rgba(251,191,36,.3)'); expPayer.focus(); return; }
+
+  // resolve "paid for" — empty set means everyone
+  const named = friends.filter(f => f.name).map(f => f.name);
+  const paidFor = paidForSelected.size === 0 ? [...named] : [...paidForSelected];
+  if (paidFor.length === 0) { showToast('👥 Select who this was paid for','var(--gold)','rgba(251,191,36,.3)'); return; }
 
   const now = new Date();
   const ts  = now.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})
              +' · '+now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
 
-  const entry = { id: nextEId++, desc, payer, amount: amt, ts };
+  const entry = { id: nextEId++, desc, payer, paidFor, amount: amt, ts };
   expenses.push(entry);
   renderExpenseEntry(entry);
   updatePersonTotals();
   saveState();
 
   expDesc.value = ''; expAmt.value = '';
+  paidForSelected.clear();
+  rebuildPaidForDropdown();
   expDesc.focus();
 }
 
@@ -830,6 +1022,10 @@ function renderExpenseEntry(e) {
   const row = document.createElement('div');
   row.className = 'log-saved-row';
   row.dataset.eid = e.id;
+  const namedCount = friends.filter(f=>f.name).length;
+  const paidForLabel = (!e.paidFor || e.paidFor.length === namedCount)
+    ? 'Everyone'
+    : e.paidFor.join(', ');
   row.innerHTML = `
     <div class="log-saved-meta">
       <span class="log-saved-desc">${esc(e.desc)}</span>
@@ -837,7 +1033,8 @@ function renderExpenseEntry(e) {
     </div>
     <div class="log-saved-right">
       <div class="log-saved-amt">₹${e.amount.toFixed(2)}</div>
-      <div class="log-saved-who">${esc(e.payer)}</div>
+      <div class="log-saved-who">by ${esc(e.payer)}</div>
+      <div class="log-saved-for">for ${esc(paidForLabel)}</div>
     </div>
     <button class="log-del-btn" title="Remove">✕</button>`;
 
@@ -880,19 +1077,32 @@ function calculateSplit() {
   if (named.length < 2) { showToast('👥 Add at least 2 travellers!','var(--coral)','rgba(255,107,107,.3)'); return; }
   if (!expenses.length)  { showToast('🧾 Log at least one expense!','var(--coral)','rgba(255,107,107,.3)'); return; }
 
-  const paidMap = {};
-  named.forEach(f => paidMap[f.name] = 0);
-  expenses.forEach(e => { if (paidMap[e.payer] !== undefined) paidMap[e.payer] += e.amount; });
+  // net balance per person across all expenses
+  // each expense: payer gets credit for full amount,
+  // each person in paidFor owes their equal share of that expense
+  const balance = {}; // positive = owed money back, negative = owes money
+  named.forEach(f => { balance[f.name] = 0; });
 
-  const total  = Object.values(paidMap).reduce((s,v)=>s+v,0);
-  const share  = total / named.length;
-  const people = named.map(f => ({ name:f.name, paid:paidMap[f.name] }));
+  let total = 0;
+  expenses.forEach(e => {
+    const paidFor = (e.paidFor && e.paidFor.length > 0) ? e.paidFor : named.map(f=>f.name);
+    const validFor = paidFor.filter(n => balance[n] !== undefined);
+    if (!validFor.length) return;
+    const share = e.amount / validFor.length;
+    total += e.amount;
+    // payer gets full credit
+    if (balance[e.payer] !== undefined) balance[e.payer] += e.amount;
+    // each person in paidFor owes their share
+    validFor.forEach(n => { balance[n] -= share; });
+    // net effect on payer: +amount - share (they also consumed their own share)
+  });
+
+  const people = named.map(f => ({ name:f.name, net: +balance[f.name].toFixed(2) }));
 
   let creditors=[], debtors=[];
   people.forEach(p => {
-    const bal = +(p.paid - share).toFixed(2);
-    if (bal > 0.01)  creditors.push({ name:p.name, amount:bal });
-    else if (bal < -0.01) debtors.push({ name:p.name, amount:-bal });
+    if (p.net > 0.01)  creditors.push({ name:p.name, amount:p.net });
+    else if (p.net < -0.01) debtors.push({ name:p.name, amount:-p.net });
   });
 
   let transactions=[], i=0, j=0;
@@ -905,17 +1115,17 @@ function calculateSplit() {
     if (creditors[j].amount <= 0.01) j++;
   }
 
-  showSummary(people, total, share, transactions);
+  showSummary(people, total, transactions);
 }
 
-function showSummary(people, total, share, transactions) {
+function showSummary(people, total, transactions) {
   const el = document.getElementById('summary');
   el.style.display = 'block';
   setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),60);
 
   document.getElementById('totalExpense').textContent = '₹'+total.toFixed(2);
   document.getElementById('friendCount').textContent  = people.length;
-  document.getElementById('shareAmount').textContent  = '₹'+share.toFixed(2);
+  document.getElementById('shareAmount').textContent  = people.length ? '₹'+(total/people.length).toFixed(2) : '₹0';
 
   const payments = document.getElementById('payments');
   payments.innerHTML = '';
@@ -929,17 +1139,22 @@ function showSummary(people, total, share, transactions) {
       payments.appendChild(d);
     });
   }
-  generateWhatsApp(people, total, share, transactions);
+  generateWhatsApp(people, total, transactions);
 }
 
-function generateWhatsApp(people, total, share, transactions) {
+function generateWhatsApp(people, total, transactions) {
   const trip = document.getElementById('tripName').value.trim() || 'Our Trip';
+  const avgShare = people.length ? (total / people.length).toFixed(2) : '0.00';
   let t = `✈️ ${trip}\n\n`;
   t += `💰 Total Expense : ₹${total.toFixed(2)}\n`;
   t += `👥 Travellers    : ${people.length}\n`;
-  t += `🧾 Per Person    : ₹${share.toFixed(2)}\n\n`;
+  t += `🧾 Avg Per Person : ₹${avgShare}\n\n`;
   t += `📋 Expense Log\n`;
-  expenses.forEach(e => { t += `• ${e.desc} — ₹${e.amount.toFixed(2)} (${e.payer}) [${e.ts}]\n`; });
+  expenses.forEach(e => {
+    const named = friends.filter(f=>f.name).map(f=>f.name);
+    const forStr = (!e.paidFor || e.paidFor.length === named.length) ? 'everyone' : e.paidFor.join(', ');
+    t += `• ${e.desc} — ₹${e.amount.toFixed(2)} (paid by ${e.payer}, for ${forStr}) [${e.ts}]\n`;
+  });
   t += `\n💸 Who Pays Whom\n`;
   if (!transactions.length) { t += 'Everyone has already paid equally! 🎉'; }
   else { transactions.forEach(x => { t += `• ${x.from} → ${x.to} : ₹${x.amount.toFixed(2)}\n`; }); }
@@ -996,6 +1211,7 @@ modalConfirm.addEventListener('click', () => {
   document.getElementById('expDesc').value    = '';
   document.getElementById('expAmt').value     = '';
   document.getElementById('summary').style.display = 'none';
+  paidForSelected.clear();
   rebuildPayerSelect();
   showNoExpenses();
 
