@@ -1,6 +1,6 @@
 // TripSplit Service Worker
 // Cache name — bump version here whenever you update the app
-const CACHE = 'tripsplit-v1';
+const CACHE = 'tripsplit-v2';
 
 // Files to pre-cache on install
 const PRECACHE = [
