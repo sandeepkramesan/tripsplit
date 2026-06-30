@@ -1315,7 +1315,6 @@ joinTripBtn.addEventListener('click', async () => {
 function enterTrip(code, isSwitch) {
   if (unsubscribe) { unsubscribe(); unsubscribe = null; }
   tripCode = code;
-  localStorage.setItem(LAST_TRIP_KEY, code);
   tripCodeDisplay.textContent = code;
   leaveModalCode.textContent = code;
   gateScreen.style.display = 'none';
@@ -1853,19 +1852,10 @@ function esc(s) {
 (function init() {
   showNoExpenses(); // placeholder until a trip loads
 
-  withFirebase(async () => {
-    const lastCode = localStorage.getItem(LAST_TRIP_KEY);
-    if (lastCode) {
-      try {
-        const snap = await fb.getDoc(tripDocRef(lastCode));
-        if (snap.exists()) {
-          rememberTrip(lastCode, snap.data().tripName || 'Unnamed Trip');
-          enterTrip(lastCode);
-          return;
-        }
-      } catch (e) { /* fall through to gate screen */ }
-    }
-    // no remembered trip (or it no longer exists) — show gate screen
+  withFirebase(() => {
+    // Always land on the gate screen on app open/reopen — never auto-resume
+    // the previously open trip. "My Trips" below lets the user jump back in
+    // with one tap if that's what they want, but it's a deliberate choice.
     renderMyTrips();
     gateScreen.style.display = 'flex';
   });
