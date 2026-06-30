@@ -695,6 +695,37 @@ textarea{
   display:none;
 }
 
+/* ── My Trips list items ── */
+.my-trip-item{
+  display:flex;align-items:center;gap:12px;
+  background:var(--card2);border:1px solid var(--border2);
+  border-radius:13px;padding:12px 14px;
+  cursor:pointer;transition:all .2s;
+}
+.my-trip-item:hover{ border-color:rgba(56,189,248,.4); transform:translateX(2px); }
+.my-trip-item .mt-icon{
+  width:34px;height:34px;border-radius:10px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--sky),var(--coral));
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+.my-trip-item .mt-info{ flex:1;min-width:0; }
+.my-trip-item .mt-name{
+  font-size:14px;font-weight:600;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.my-trip-item .mt-code{
+  font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:1px;
+}
+.my-trip-item .mt-arrow{ color:var(--muted);font-size:14px;flex-shrink:0; }
+.my-trip-item .mt-remove{
+  background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.18);
+  color:var(--coral);border-radius:8px;width:26px;height:26px;
+  font-size:11px;cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;
+}
+.my-trip-item .mt-remove:hover{ background:rgba(255,107,107,.22); }
+
 /* ════════ TRIP BADGE (in header) ════════ */
 .trip-badge{
   display:inline-flex;align-items:center;gap:8px;
@@ -728,6 +759,13 @@ textarea{
     <h1>TripSplit</h1>
     <p class="gate-sub">Split bills. Keep the memories.</p>
 
+    <!-- My Trips — saved trip codes on this device -->
+    <div id="myTripsSection" style="display:none;text-align:left;margin-bottom:18px;">
+      <label style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--lime);margin-bottom:8px;display:block;">📂 My Trips</label>
+      <div id="myTripsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <div class="divider" style="margin:18px 0 16px;"></div>
+    </div>
+
     <div class="gate-tabs">
       <div class="gate-tab active" id="tabCreate">Create Trip</div>
       <div class="gate-tab" id="tabJoin">Join Trip</div>
@@ -754,12 +792,12 @@ textarea{
 <!-- ════════ LEAVE TRIP MODAL ════════ -->
 <div class="modal-overlay" id="leaveModal">
   <div class="modal-box">
-    <div class="modal-icon">🚪</div>
-    <div class="modal-title">Leave this trip?</div>
-    <div class="modal-sub">You'll return to the home screen. Your group's data stays safe in the cloud — rejoin anytime with the code.</div>
-    <div class="modal-btns">
-      <button class="modal-cancel" id="leaveCancel">Stay</button>
-      <button class="modal-confirm" id="leaveConfirm">Leave Trip</button>
+    <div class="modal-icon">✈️</div>
+    <div class="modal-title">Trip Menu</div>
+    <div class="modal-sub">You're in trip <strong id="leaveModalCode">------</strong>. Your data stays safe in the cloud either way.</div>
+    <div class="modal-btns" style="flex-direction:column;">
+      <button class="gate-btn" id="switchTripBtn" style="margin-top:0;">🔁 Switch to Another Trip</button>
+      <button class="modal-cancel" id="leaveCancel" style="margin-top:10px;">Stay Here</button>
     </div>
   </div>
 </div>
@@ -838,7 +876,7 @@ textarea{
     </div>
     <h1>TripSplit</h1>
     <p class="header-sub">Split bills. Keep the memories.</p>
-    <div class="trip-badge" id="tripBadge" title="Tap to leave trip">
+    <div class="trip-badge" id="tripBadge" title="Tap to switch trips">
       <span class="dot" id="connDot"></span>
       <span class="code" id="tripCodeDisplay">------</span>
       <span class="leave-icon">⋯</span>
@@ -943,6 +981,81 @@ let saveTimer   = null;          // debounce handle
 let unsubscribe = null;          // firestore listener unsub fn
 
 const LAST_TRIP_KEY = 'tripsplit_last_code'; // remember which trip this device was in
+const MY_TRIPS_KEY  = 'tripsplit_my_trips';  // local registry of {code, name} this device has joined/created
+
+// ════════ MY TRIPS REGISTRY (local device list) ════════
+function getMyTrips() {
+  try {
+    const raw = localStorage.getItem(MY_TRIPS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+}
+
+function saveMyTrips(list) {
+  try { localStorage.setItem(MY_TRIPS_KEY, JSON.stringify(list)); } catch (e) {}
+}
+
+// add or update a trip in the local registry (most-recent-first)
+function rememberTrip(code, name) {
+  let list = getMyTrips().filter(t => t.code !== code);
+  list.unshift({ code, name: name || 'Unnamed Trip' });
+  list = list.slice(0, 10); // cap at 10 remembered trips
+  saveMyTrips(list);
+}
+
+function forgetTrip(code) {
+  saveMyTrips(getMyTrips().filter(t => t.code !== code));
+}
+
+function renderMyTrips() {
+  const trips = getMyTrips();
+  if (!trips.length) { myTripsSection.style.display = 'none'; return; }
+  myTripsSection.style.display = 'block';
+  myTripsList.innerHTML = '';
+  trips.forEach(t => {
+    const item = document.createElement('div');
+    item.className = 'my-trip-item';
+    item.innerHTML = `
+      <div class="mt-icon">✈️</div>
+      <div class="mt-info">
+        <div class="mt-name">${esc(t.name)}</div>
+        <div class="mt-code">${esc(t.code)}</div>
+      </div>
+      <span class="mt-arrow">→</span>
+      <button class="mt-remove" title="Remove from list">✕</button>
+    `;
+    item.addEventListener('click', e => {
+      if (e.target.closest('.mt-remove')) return;
+      goToTrip(t.code);
+    });
+    item.querySelector('.mt-remove').addEventListener('click', e => {
+      e.stopPropagation();
+      forgetTrip(t.code);
+      renderMyTrips();
+    });
+    myTripsList.appendChild(item);
+  });
+}
+
+// jump straight into a remembered trip (used by My Trips list + switch flow)
+async function goToTrip(code) {
+  withFirebase(async () => {
+    gateError.style.display = 'none';
+    try {
+      const snap = await fb.getDoc(tripDocRef(code));
+      if (!snap.exists()) {
+        forgetTrip(code);
+        renderMyTrips();
+        showGateError('That trip no longer exists — removed from your list.');
+        return;
+      }
+      enterTrip(code, true);
+    } catch (e) {
+      console.error(e);
+      showGateError('Could not load trip. Check your connection and try again.');
+    }
+  });
+}
 
 // ════════ DOM ════════
 const friendsList      = document.getElementById('friendsList');
@@ -981,8 +1094,11 @@ const tripBadge        = document.getElementById('tripBadge');
 const tripCodeDisplay  = document.getElementById('tripCodeDisplay');
 const connDot          = document.getElementById('connDot');
 const leaveModal       = document.getElementById('leaveModal');
+const leaveModalCode   = document.getElementById('leaveModalCode');
 const leaveCancel      = document.getElementById('leaveCancel');
-const leaveConfirm     = document.getElementById('leaveConfirm');
+const switchTripBtn    = document.getElementById('switchTripBtn');
+const myTripsSection   = document.getElementById('myTripsSection');
+const myTripsList      = document.getElementById('myTripsList');
 
 // ════════ FIREBASE (wired in once the module script fires 'firebase-ready') ════════
 let fb = null;
@@ -1084,7 +1200,10 @@ function clearState() {
 }
 
 // auto-save on tripName change
-document.getElementById('tripName').addEventListener('input', saveState);
+document.getElementById('tripName').addEventListener('input', e => {
+  saveState();
+  if (tripCode) rememberTrip(tripCode, e.target.value.trim() || 'Unnamed Trip');
+});
 
 // ════════ GATE SCREEN LOGIC ════════
 tabCreate.addEventListener('click', () => {
@@ -1124,6 +1243,7 @@ createTripBtn.addEventListener('click', async () => {
         tripName: name, friends: [], expenses: [], nextFId: 1, nextEId: 1,
         createdAt: fb.serverTimestamp()
       });
+      rememberTrip(code, name || 'Unnamed Trip');
       enterTrip(code);
     } catch (e) {
       console.error(e);
@@ -1148,6 +1268,8 @@ joinTripBtn.addEventListener('click', async () => {
         joinTripBtn.textContent = '🔗 Join Trip';
         return;
       }
+      const data = snap.data();
+      rememberTrip(code, data.tripName || 'Unnamed Trip');
       enterTrip(code);
     } catch (e) {
       console.error(e);
@@ -1158,28 +1280,35 @@ joinTripBtn.addEventListener('click', async () => {
   });
 });
 
-function enterTrip(code) {
+function enterTrip(code, isSwitch) {
+  if (unsubscribe) { unsubscribe(); unsubscribe = null; }
   tripCode = code;
   localStorage.setItem(LAST_TRIP_KEY, code);
   tripCodeDisplay.textContent = code;
+  leaveModalCode.textContent = code;
   gateScreen.style.display = 'none';
-  startListening(code);
-}
 
-// ── leave trip ──
-tripBadge.addEventListener('click', () => leaveModal.classList.add('show'));
-leaveCancel.addEventListener('click', () => leaveModal.classList.remove('show'));
-leaveModal.addEventListener('click', e => { if (e.target===leaveModal) leaveModal.classList.remove('show'); });
-leaveConfirm.addEventListener('click', () => {
-  leaveModal.classList.remove('show');
-  if (unsubscribe) { unsubscribe(); unsubscribe = null; }
-  localStorage.removeItem(LAST_TRIP_KEY);
-  tripCode = null;
-  // reset gate inputs
+  // reset gate form state for next time it's shown
   gateTripName.value = ''; gateTripCode.value = '';
   gateError.style.display = 'none';
   createTripBtn.disabled = false; createTripBtn.textContent = '✈️ Create Trip';
   joinTripBtn.disabled = false; joinTripBtn.textContent = '🔗 Join Trip';
+
+  startListening(code);
+}
+
+// ── trip menu: switch trip ──
+tripBadge.addEventListener('click', () => {
+  leaveModalCode.textContent = tripCode || '------';
+  leaveModal.classList.add('show');
+});
+leaveCancel.addEventListener('click', () => leaveModal.classList.remove('show'));
+leaveModal.addEventListener('click', e => { if (e.target===leaveModal) leaveModal.classList.remove('show'); });
+switchTripBtn.addEventListener('click', () => {
+  leaveModal.classList.remove('show');
+  if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+  tripCode = null;
+  renderMyTrips();
   tabCreate.click();
   gateScreen.style.display = 'flex';
 });
@@ -1611,12 +1740,14 @@ function esc(s) {
       try {
         const snap = await fb.getDoc(tripDocRef(lastCode));
         if (snap.exists()) {
+          rememberTrip(lastCode, snap.data().tripName || 'Unnamed Trip');
           enterTrip(lastCode);
           return;
         }
       } catch (e) { /* fall through to gate screen */ }
     }
     // no remembered trip (or it no longer exists) — show gate screen
+    renderMyTrips();
     gateScreen.style.display = 'flex';
   });
 })();
