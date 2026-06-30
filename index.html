@@ -459,6 +459,16 @@ select option{background:var(--card2);}
 }
 .btn-clear:hover{background:rgba(255,107,107,.18);transform:translateY(-1px);}
 
+.btn-export{
+  background:rgba(163,230,53,.09);color:var(--lime);
+  border:1px solid rgba(163,230,53,.22);
+  width:100%;margin-top:10px;padding:13px;
+  font-size:14px;font-weight:600;border-radius:13px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  cursor:pointer;transition:all .2s;font-family:var(--font);
+}
+.btn-export:hover{background:rgba(163,230,53,.18);transform:translateY(-1px);}
+
 .btn-copy{
   width:100%;margin-top:2px;
   background:rgba(52,211,153,.1);color:var(--mint);
@@ -786,6 +796,13 @@ textarea{
     </div>
 
     <p class="gate-error" id="gateError"></p>
+
+    <div class="divider" style="margin:20px 0 16px;"></div>
+    <button class="gate-btn" id="importTripBtn" style="background:rgba(163,230,53,.1);color:var(--lime);box-shadow:none;">
+      📂 Import Trip File
+    </button>
+    <input type="file" id="importFileInput" accept="application/json,.json" style="display:none;">
+    <p class="gate-hint">Got a trip file from a friend or your old phone? Import it here.</p>
   </div>
 </div>
 
@@ -941,8 +958,9 @@ textarea{
     </div>
   </div>
 
-  <!-- ── SPLIT + CLEAR ── -->
+  <!-- ── SPLIT + EXPORT + CLEAR ── -->
   <button class="btn btn-split" id="splitBtn">💰 Calculate Split</button>
+  <button class="btn-export" id="exportBtn">⬇️ Export Trip to Phone</button>
   <button class="btn-clear" id="clearBtn">🗑️ Clear Trip Data</button>
 
   <!-- ── SUMMARY ── -->
@@ -1099,6 +1117,9 @@ const leaveCancel      = document.getElementById('leaveCancel');
 const switchTripBtn    = document.getElementById('switchTripBtn');
 const myTripsSection   = document.getElementById('myTripsSection');
 const myTripsList      = document.getElementById('myTripsList');
+const exportBtn        = document.getElementById('exportBtn');
+const importTripBtn    = document.getElementById('importTripBtn');
+const importFileInput  = document.getElementById('importFileInput');
 
 // ════════ FIREBASE (wired in once the module script fires 'firebase-ready') ════════
 let fb = null;
@@ -1151,6 +1172,21 @@ function setConnStatus(online) {
 function applyRemoteData(data) {
   isApplyingRemote = true;
 
+  // if the user is actively typing in a friend name or an expense field on THIS device,
+  // skip applying the remote snapshot entirely — applying a stale/partial snapshot
+  // (e.g. mid-typing, before this device's own edit has round-tripped) would silently
+  // wipe local-only changes (like a 2nd/3rd traveller name not yet saved) and break
+  // the Paid By / Paid For dropdowns. The next snapshot after saveState() finishes
+  // will catch this device back up.
+  const active = document.activeElement;
+  const typingInFriend = active && active.closest('.friend-row');
+  const typingInExpense = active && (active === expDesc || active === expAmt || active.closest('.exp-input-grid'));
+
+  if (typingInFriend || typingInExpense) {
+    isApplyingRemote = false;
+    return;
+  }
+
   friends  = data.friends  || [];
   expenses = data.expenses || [];
   nextFId  = data.nextFId  || 1;
@@ -1159,13 +1195,9 @@ function applyRemoteData(data) {
   const tn = document.getElementById('tripName');
   if (document.activeElement !== tn) tn.value = data.tripName || '';
 
-  // re-render friends list (skip if user is actively typing in a friend name field)
-  const typingInFriend = document.activeElement && document.activeElement.closest('.friend-row');
-  if (!typingInFriend) {
-    friendsList.innerHTML = '';
-    if (friends.length) friends.forEach(f => renderFriendRow(f));
-    else { addFriend(); addFriend(); }
-  }
+  friendsList.innerHTML = '';
+  if (friends.length) friends.forEach(f => renderFriendRow(f));
+  else { addFriend(); addFriend(); }
 
   // re-render expense list
   expenseEntries.innerHTML = '';
@@ -1680,6 +1712,93 @@ document.getElementById('copyBtn').addEventListener('click', async () => {
   showToast('❌ Copy failed — select text manually','var(--coral)','rgba(255,107,107,.3)');
 });
 
+// ════════ EXPORT TRIP ════════
+exportBtn.addEventListener('click', () => {
+  if (!tripCode) {
+    showToast('⚠️ No active trip to export','var(--gold)','rgba(251,191,36,.3)');
+    return;
+  }
+  const tripName = document.getElementById('tripName').value.trim() || 'Unnamed Trip';
+  const payload = {
+    tripSplitExport: true,
+    exportVersion: 1,
+    exportedAt: new Date().toISOString(),
+    tripCode,
+    tripName,
+    friends,
+    expenses,
+    nextFId,
+    nextEId
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+
+  const safeName = tripName.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'trip';
+  a.href = url;
+  a.download = `tripsplit-${safeName}-${tripCode}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+  showToast('⬇️ Trip downloaded to your phone!','var(--lime)','rgba(163,230,53,.3)');
+});
+
+// ════════ IMPORT TRIP ════════
+importTripBtn.addEventListener('click', () => importFileInput.click());
+
+importFileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  importFileInput.value = ''; // reset so same file can be re-picked later
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+
+    if (!data || !data.tripSplitExport || !data.tripCode) {
+      showGateError('That file doesn\'t look like a valid TripSplit export.');
+      return;
+    }
+
+    withFirebase(async () => {
+      try {
+        const ref = tripDocRef(data.tripCode);
+        const snap = await fb.getDoc(ref);
+
+        if (snap.exists()) {
+          // trip already exists in the cloud (e.g. group is still active) — just join it,
+          // don't overwrite live data with a possibly-stale export
+          rememberTrip(data.tripCode, snap.data().tripName || data.tripName);
+          enterTrip(data.tripCode);
+          showToast('📂 Trip found in the cloud — joined it!','var(--mint)','rgba(52,211,153,.3)');
+        } else {
+          // trip no longer exists remotely — recreate it from the export file
+          await fb.setDoc(ref, {
+            tripName: data.tripName || 'Unnamed Trip',
+            friends:  data.friends  || [],
+            expenses: data.expenses || [],
+            nextFId:  data.nextFId  || 1,
+            nextEId:  data.nextEId  || 1,
+            createdAt: fb.serverTimestamp()
+          });
+          rememberTrip(data.tripCode, data.tripName || 'Unnamed Trip');
+          enterTrip(data.tripCode);
+          showToast('📂 Trip restored from file!','var(--lime)','rgba(163,230,53,.3)');
+        }
+      } catch (err) {
+        console.error(err);
+        showGateError('Could not import trip. Check your connection and try again.');
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    showGateError('Could not read that file — make sure it\'s a TripSplit export.');
+  }
+});
+
 // ════════ CLEAR MODAL ════════
 clearBtn.addEventListener('click', () => clearModal.classList.add('show'));
 modalCancel.addEventListener('click', () => clearModal.classList.remove('show'));
@@ -1763,47 +1882,86 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ── PWA: Install prompt banner ──────────────────────────
+// ── PWA: Install prompt banner (top of screen, Android + iOS) ──────────────
 let deferredPrompt = null;
+
+// detect platform
+const ua = window.navigator.userAgent;
+const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+  || window.navigator.standalone === true; // iOS Safari flag
+
+const INSTALL_DISMISS_KEY = 'tripsplit_install_dismissed_date';
+
+function alreadyDismissedToday() {
+  const dismissedDate = localStorage.getItem(INSTALL_DISMISS_KEY);
+  if (!dismissedDate) return false;
+  const today = new Date().toDateString();
+  return dismissedDate === today; // only suppress for the rest of today — shows again tomorrow
+}
+
 const installBanner = document.createElement('div');
 installBanner.id = 'installBanner';
-installBanner.innerHTML = `
-  <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
-    <span style="font-size:26px">✈️</span>
-    <div>
-      <div style="font-weight:700;font-size:14px;color:#e8f4ff">Install TripSplit</div>
-      <div style="font-size:12px;color:#5a7a9a;margin-top:1px">Add to home screen for offline use</div>
-    </div>
-  </div>
-  <button id="installYes" style="
-    background:linear-gradient(135deg,#38bdf8,#fb7185);
-    color:#fff;border:none;border-radius:10px;
-    padding:9px 16px;font-size:13px;font-weight:700;
-    font-family:'Space Grotesk',sans-serif;cursor:pointer;
-    white-space:nowrap;flex-shrink:0
-  ">Install</button>
-  <button id="installNo" style="
-    background:transparent;border:none;color:#5a7a9a;
-    font-size:20px;cursor:pointer;padding:4px 6px;flex-shrink:0
-  ">✕</button>
-`;
 Object.assign(installBanner.style, {
-  position:'fixed', bottom:'0', left:'0', right:'0',
+  position:'fixed', top:'0', left:'0', right:'0',
   background:'#0d1525',
-  borderTop:'1px solid rgba(56,189,248,0.2)',
-  padding:'14px 18px',
+  borderBottom:'1px solid rgba(56,189,248,0.25)',
+  padding:'12px 16px',
+  paddingTop:'max(12px, env(safe-area-inset-top))',
   display:'none', alignItems:'center', gap:'12px',
-  zIndex:'200',
-  boxShadow:'0 -4px 30px rgba(0,0,0,0.4)',
+  zIndex:'600',
+  boxShadow:'0 4px 30px rgba(0,0,0,0.4)',
   fontFamily:"'Space Grotesk',sans-serif"
 });
 document.body.appendChild(installBanner);
 
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
-  installBanner.style.display = 'flex';
-});
+function buildAndroidBanner() {
+  installBanner.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+      <span style="font-size:24px;flex-shrink:0">✈️</span>
+      <div style="min-width:0">
+        <div style="font-weight:700;font-size:13px;color:#e8f4ff">Install TripSplit</div>
+        <div style="font-size:11px;color:#5a7a9a;margin-top:1px">Add to home screen for offline use</div>
+      </div>
+    </div>
+    <button id="installYes" style="
+      background:linear-gradient(135deg,#38bdf8,#fb7185);
+      color:#fff;border:none;border-radius:10px;
+      padding:8px 14px;font-size:12px;font-weight:700;
+      font-family:'Space Grotesk',sans-serif;cursor:pointer;
+      white-space:nowrap;flex-shrink:0
+    ">Install</button>
+    <button id="installNo" style="
+      background:transparent;border:none;color:#5a7a9a;
+      font-size:18px;cursor:pointer;padding:2px 4px;flex-shrink:0
+    ">✕</button>
+  `;
+}
+
+function buildIOSBanner() {
+  installBanner.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+      <span style="font-size:24px;flex-shrink:0">✈️</span>
+      <div style="min-width:0">
+        <div style="font-weight:700;font-size:13px;color:#e8f4ff">Install TripSplit</div>
+        <div style="font-size:11px;color:#5a7a9a;margin-top:1px">
+          Tap <strong style="color:#38bdf8">Share</strong> <span style="font-size:13px">⎋</span> then
+          <strong style="color:#38bdf8">"Add to Home Screen"</strong>
+        </div>
+      </div>
+    </div>
+    <button id="installNo" style="
+      background:transparent;border:none;color:#5a7a9a;
+      font-size:18px;cursor:pointer;padding:2px 4px;flex-shrink:0
+    ">✕</button>
+  `;
+}
+
+function dismissBanner() {
+  installBanner.style.display = 'none';
+  localStorage.setItem(INSTALL_DISMISS_KEY, new Date().toDateString());
+}
 
 document.addEventListener('click', e => {
   if (e.target.id === 'installYes' && deferredPrompt) {
@@ -1812,9 +1970,25 @@ document.addEventListener('click', e => {
     deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
   }
   if (e.target.id === 'installNo') {
-    installBanner.style.display = 'none';
+    dismissBanner();
   }
 });
+
+if (!isStandalone && !alreadyDismissedToday()) {
+  if (isIOS && isSafari) {
+    // iOS Safari never fires beforeinstallprompt — show instructional banner directly
+    buildIOSBanner();
+    setTimeout(() => { installBanner.style.display = 'flex'; }, 1200);
+  } else {
+    // Android / desktop Chrome — wait for the native prompt event
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredPrompt = e;
+      buildAndroidBanner();
+      installBanner.style.display = 'flex';
+    });
+  }
+}
 
 window.addEventListener('appinstalled', () => {
   installBanner.style.display = 'none';
