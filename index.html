@@ -22,6 +22,30 @@
 <meta property="og:url" content="https://sandeepkramesan.github.io/tripsplit/">
 
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Pacifico&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+
+<!-- ── Firebase (Firestore for real-time shared trips) ── -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+  import {
+    getFirestore, doc, setDoc, getDoc, onSnapshot, serverTimestamp, updateDoc
+  } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAR0dI_b8L46-kmuhAJaYgrN75xEce4MCA",
+    authDomain: "tripsplit-pwa-2026.firebaseapp.com",
+    projectId: "tripsplit-pwa-2026",
+    storageBucket: "tripsplit-pwa-2026.firebasestorage.app",
+    messagingSenderId: "397096109729",
+    appId: "1:397096109729:web:459dbfb0e79f15ee6e52e0"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  // expose to the main (non-module) script below
+  window.__fb = { db, doc, setDoc, getDoc, onSnapshot, serverTimestamp, updateDoc };
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 
@@ -597,11 +621,148 @@ textarea{
   .exp-input-grid{grid-template-columns:1fr 1fr;grid-template-rows:auto auto;}
   .exp-input-grid .btn-add-exp{grid-column:2;justify-self:end;}
 }
+
+/* ════════ TRIP GATE SCREEN ════════ */
+#gateScreen{
+  position:fixed;inset:0;z-index:400;
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+}
+.gate-box{
+  max-width:380px;width:100%;
+  text-align:center;
+}
+.gate-logo{
+  width:90px;height:90px;border-radius:50%;
+  background:linear-gradient(135deg,rgba(56,189,248,.14),rgba(251,113,133,.12));
+  border:2px solid rgba(56,189,248,.35);
+  display:flex;align-items:center;justify-content:center;
+  font-size:40px;margin:0 auto 18px;
+  animation:float 4.5s ease-in-out infinite;
+  box-shadow:0 0 0 8px rgba(56,189,248,.04),0 0 50px rgba(56,189,248,.1);
+}
+.gate-box h1{
+  font-family:var(--display);font-size:46px;
+  background:linear-gradient(120deg,var(--sky) 0%,var(--coral) 45%,var(--lime) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:6px;
+}
+.gate-sub{font-family:var(--hand);font-size:18px;color:var(--muted);margin-bottom:32px;}
+
+.gate-tabs{
+  display:flex;background:var(--card2);border:1px solid var(--border);
+  border-radius:14px;padding:4px;margin-bottom:18px;
+}
+.gate-tab{
+  flex:1;text-align:center;padding:11px;border-radius:11px;
+  font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;
+  transition:all .2s;
+}
+.gate-tab.active{
+  background:linear-gradient(135deg,var(--sky),var(--coral));
+  color:#fff;
+}
+
+.gate-panel{display:none;text-align:left;}
+.gate-panel.active{display:block;}
+
+.gate-panel label{
+  font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--sky);margin-bottom:8px;display:block;
+}
+.gate-panel input{
+  text-align:center;font-size:18px;letter-spacing:3px;font-weight:700;
+  text-transform:uppercase;
+}
+.gate-panel input::placeholder{ letter-spacing:1px;font-weight:400;font-size:14px; }
+
+.gate-btn{
+  width:100%;margin-top:14px;
+  background:linear-gradient(135deg,var(--sky),var(--coral));
+  color:#fff;border:none;border-radius:13px;
+  padding:14px;font-size:15px;font-weight:700;
+  font-family:var(--font);cursor:pointer;transition:all .2s;
+}
+.gate-btn:hover{ transform:translateY(-2px); box-shadow:0 6px 26px rgba(56,189,248,.3); }
+.gate-btn:disabled{ opacity:.5;cursor:not-allowed;transform:none; }
+
+.gate-hint{
+  font-size:12px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.5;
+}
+.gate-error{
+  font-size:13px;color:var(--coral);text-align:center;margin-top:10px;
+  display:none;
+}
+
+/* ════════ TRIP BADGE (in header) ════════ */
+.trip-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--card2);border:1px solid var(--border2);
+  border-radius:30px;padding:7px 16px 7px 8px;
+  margin-top:16px;font-size:13px;cursor:pointer;
+  transition:border-color .2s;
+}
+.trip-badge:hover{ border-color:rgba(56,189,248,.4); }
+.trip-badge .dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--mint);flex-shrink:0;
+  box-shadow:0 0 8px var(--mint);
+  animation:dot-pulse 2s ease-in-out infinite;
+}
+.trip-badge .dot.offline{ background:var(--coral); box-shadow:0 0 8px var(--coral); animation:none; }
+@keyframes dot-pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.trip-badge .code{ font-weight:700;color:var(--sky);letter-spacing:1.5px; }
+.trip-badge .leave-icon{ color:var(--muted);font-size:11px; }
+
+/* leave trip confirm modal reuses .modal-overlay styles */
+
 </style>
 </head>
 <body>
 
-<!-- SVG inline doodles in background -->
+<!-- ════════ TRIP GATE SCREEN ════════ -->
+<div id="gateScreen">
+  <div class="gate-box">
+    <div class="gate-logo">✈️</div>
+    <h1>TripSplit</h1>
+    <p class="gate-sub">Split bills. Keep the memories.</p>
+
+    <div class="gate-tabs">
+      <div class="gate-tab active" id="tabCreate">Create Trip</div>
+      <div class="gate-tab" id="tabJoin">Join Trip</div>
+    </div>
+
+    <div class="gate-panel active" id="panelCreate">
+      <label>Trip Name</label>
+      <input type="text" id="gateTripName" placeholder="e.g. Goa Squad 2026 🏖️" style="text-align:left;text-transform:none;letter-spacing:normal;font-size:14px;font-weight:400;margin-bottom:14px;">
+      <button class="gate-btn" id="createTripBtn">✈️ Create Trip</button>
+      <p class="gate-hint">You'll get a 6-character code to share with your group.</p>
+    </div>
+
+    <div class="gate-panel" id="panelJoin">
+      <label>Trip Code</label>
+      <input type="text" id="gateTripCode" placeholder="ABC123" maxlength="6">
+      <button class="gate-btn" id="joinTripBtn">🔗 Join Trip</button>
+      <p class="gate-hint">Ask a group member for the 6-character trip code.</p>
+    </div>
+
+    <p class="gate-error" id="gateError"></p>
+  </div>
+</div>
+
+<!-- ════════ LEAVE TRIP MODAL ════════ -->
+<div class="modal-overlay" id="leaveModal">
+  <div class="modal-box">
+    <div class="modal-icon">🚪</div>
+    <div class="modal-title">Leave this trip?</div>
+    <div class="modal-sub">You'll return to the home screen. Your group's data stays safe in the cloud — rejoin anytime with the code.</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" id="leaveCancel">Stay</button>
+      <button class="modal-confirm" id="leaveConfirm">Leave Trip</button>
+    </div>
+  </div>
+</div>
 <svg class="doodle-canvas" xmlns="http://www.w3.org/2000/svg">
   <!-- dotted flight path arc top-left to bottom-right -->
   <path d="M -20 80 Q 200 -30 420 120 Q 640 270 900 180"
@@ -655,7 +816,7 @@ textarea{
   <div class="modal-box">
     <div class="modal-icon">🗑️</div>
     <div class="modal-title">Clear all trip data?</div>
-    <div class="modal-sub">This will erase all travellers, expenses and the trip name. Can't undo this one!</div>
+    <div class="modal-sub">This erases all travellers, expenses and the trip name for <strong>everyone</strong> in this trip. Can't undo this one!</div>
     <div class="modal-btns">
       <button class="modal-cancel" id="modalCancel">Keep it</button>
       <button class="modal-confirm" id="modalConfirm">Yes, clear</button>
@@ -677,6 +838,11 @@ textarea{
     </div>
     <h1>TripSplit</h1>
     <p class="header-sub">Split bills. Keep the memories.</p>
+    <div class="trip-badge" id="tripBadge" title="Tap to leave trip">
+      <span class="dot" id="connDot"></span>
+      <span class="code" id="tripCodeDisplay">------</span>
+      <span class="leave-icon">⋯</span>
+    </div>
     <div class="sticker-row">
       <span>🌴</span><span>🛂</span><span>📸</span>
       <span>🌅</span><span>🍹</span><span>🗺️</span>
@@ -765,12 +931,18 @@ textarea{
 
 <script>
 // ════════ STATE ════════
-const LS_KEY = 'tripsplit_v2';
 let friends   = [];
 let expenses  = [];
 let nextFId   = 1;
 let nextEId   = 1;
 let paidForSelected = new Set(); // set of names currently selected in the paid-for dropdown
+
+let tripCode    = null;          // current shared trip code
+let isApplyingRemote = false;    // guard to avoid write-loop when applying a snapshot
+let saveTimer   = null;          // debounce handle
+let unsubscribe = null;          // firestore listener unsub fn
+
+const LAST_TRIP_KEY = 'tripsplit_last_code'; // remember which trip this device was in
 
 // ════════ DOM ════════
 const friendsList      = document.getElementById('friendsList');
@@ -794,32 +966,117 @@ const paidForLabel     = document.getElementById('paidForLabel');
 const paidForAll       = document.getElementById('paidForAll');
 const paidForAllCheck  = document.getElementById('paidForAllCheck');
 
-// ════════ LOCALSTORAGE ════════
-function saveState() {
-  try {
-    const tripName = document.getElementById('tripName').value;
-    localStorage.setItem(LS_KEY, JSON.stringify({
-      tripName, friends, expenses, nextFId, nextEId
-    }));
-  } catch(e) {}
+// gate screen DOM
+const gateScreen      = document.getElementById('gateScreen');
+const tabCreate        = document.getElementById('tabCreate');
+const tabJoin          = document.getElementById('tabJoin');
+const panelCreate       = document.getElementById('panelCreate');
+const panelJoin          = document.getElementById('panelJoin');
+const gateTripName     = document.getElementById('gateTripName');
+const gateTripCode     = document.getElementById('gateTripCode');
+const createTripBtn    = document.getElementById('createTripBtn');
+const joinTripBtn      = document.getElementById('joinTripBtn');
+const gateError        = document.getElementById('gateError');
+const tripBadge        = document.getElementById('tripBadge');
+const tripCodeDisplay  = document.getElementById('tripCodeDisplay');
+const connDot          = document.getElementById('connDot');
+const leaveModal       = document.getElementById('leaveModal');
+const leaveCancel      = document.getElementById('leaveCancel');
+const leaveConfirm     = document.getElementById('leaveConfirm');
+
+// ════════ FIREBASE (wired in once the module script fires 'firebase-ready') ════════
+let fb = null;
+function withFirebase(cb) {
+  if (window.__fb) { fb = window.__fb; cb(); }
+  else window.addEventListener('firebase-ready', () => { fb = window.__fb; cb(); }, { once: true });
 }
 
-function loadState() {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return false;
-    const s = JSON.parse(raw);
-    nextFId  = s.nextFId  || 1;
-    nextEId  = s.nextEId  || 1;
-    friends  = s.friends  || [];
-    expenses = s.expenses || [];
-    if (s.tripName) document.getElementById('tripName').value = s.tripName;
-    return true;
-  } catch(e) { return false; }
+// ════════ TRIP CODE GENERATION ════════
+function generateTripCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars (0/O, 1/I)
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+// ════════ FIRESTORE SYNC ════════
+function tripDocRef(code) {
+  return fb.doc(fb.db, 'trips', code);
+}
+
+function snapshotPayload() {
+  return {
+    tripName: document.getElementById('tripName').value || '',
+    friends, expenses, nextFId, nextEId,
+    updatedAt: fb.serverTimestamp ? fb.serverTimestamp() : Date.now()
+  };
+}
+
+// debounced write to Firestore — avoids spamming on every keystroke
+function saveState() {
+  if (!tripCode || !fb || isApplyingRemote) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      await fb.setDoc(tripDocRef(tripCode), snapshotPayload(), { merge: true });
+      setConnStatus(true);
+    } catch (e) {
+      console.warn('Save failed:', e);
+      setConnStatus(false);
+    }
+  }, 400);
+}
+
+function setConnStatus(online) {
+  connDot.classList.toggle('offline', !online);
+}
+
+// apply a remote snapshot into local state + re-render everything
+function applyRemoteData(data) {
+  isApplyingRemote = true;
+
+  friends  = data.friends  || [];
+  expenses = data.expenses || [];
+  nextFId  = data.nextFId  || 1;
+  nextEId  = data.nextEId  || 1;
+
+  const tn = document.getElementById('tripName');
+  if (document.activeElement !== tn) tn.value = data.tripName || '';
+
+  // re-render friends list (skip if user is actively typing in a friend name field)
+  const typingInFriend = document.activeElement && document.activeElement.closest('.friend-row');
+  if (!typingInFriend) {
+    friendsList.innerHTML = '';
+    if (friends.length) friends.forEach(f => renderFriendRow(f));
+    else { addFriend(); addFriend(); }
+  }
+
+  // re-render expense list
+  expenseEntries.innerHTML = '';
+  if (expenses.length) expenses.forEach(e => renderExpenseEntry(e));
+  else showNoExpenses();
+
+  rebuildPayerSelect();
+  updatePersonTotals();
+
+  isApplyingRemote = false;
+}
+
+function startListening(code) {
+  if (unsubscribe) unsubscribe();
+  unsubscribe = fb.onSnapshot(tripDocRef(code), snap => {
+    if (snap.exists()) {
+      applyRemoteData(snap.data());
+      setConnStatus(true);
+    }
+  }, err => {
+    console.warn('Listener error:', err);
+    setConnStatus(false);
+  });
 }
 
 function clearState() {
-  localStorage.removeItem(LS_KEY);
+  if (unsubscribe) { unsubscribe(); unsubscribe = null; }
   friends  = [];
   expenses = [];
   nextFId  = 1;
@@ -829,8 +1086,108 @@ function clearState() {
 // auto-save on tripName change
 document.getElementById('tripName').addEventListener('input', saveState);
 
+// ════════ GATE SCREEN LOGIC ════════
+tabCreate.addEventListener('click', () => {
+  tabCreate.classList.add('active'); tabJoin.classList.remove('active');
+  panelCreate.classList.add('active'); panelJoin.classList.remove('active');
+  gateError.style.display = 'none';
+});
+tabJoin.addEventListener('click', () => {
+  tabJoin.classList.add('active'); tabCreate.classList.remove('active');
+  panelJoin.classList.add('active'); panelCreate.classList.remove('active');
+  gateError.style.display = 'none';
+});
+
+gateTripCode.addEventListener('input', () => {
+  gateTripCode.value = gateTripCode.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+});
+
+function showGateError(msg) {
+  gateError.textContent = msg;
+  gateError.style.display = 'block';
+}
+
+createTripBtn.addEventListener('click', async () => {
+  withFirebase(async () => {
+    createTripBtn.disabled = true;
+    createTripBtn.textContent = 'Creating…';
+    try {
+      let code = generateTripCode();
+      // ensure uniqueness (very unlikely collision, but check once)
+      let existing = await fb.getDoc(tripDocRef(code));
+      while (existing.exists()) {
+        code = generateTripCode();
+        existing = await fb.getDoc(tripDocRef(code));
+      }
+      const name = gateTripName.value.trim();
+      await fb.setDoc(tripDocRef(code), {
+        tripName: name, friends: [], expenses: [], nextFId: 1, nextEId: 1,
+        createdAt: fb.serverTimestamp()
+      });
+      enterTrip(code);
+    } catch (e) {
+      console.error(e);
+      showGateError('Could not create trip. Check your connection and try again.');
+      createTripBtn.disabled = false;
+      createTripBtn.textContent = '✈️ Create Trip';
+    }
+  });
+});
+
+joinTripBtn.addEventListener('click', async () => {
+  withFirebase(async () => {
+    const code = gateTripCode.value.trim().toUpperCase();
+    if (code.length !== 6) { showGateError('Enter the full 6-character code.'); return; }
+    joinTripBtn.disabled = true;
+    joinTripBtn.textContent = 'Joining…';
+    try {
+      const snap = await fb.getDoc(tripDocRef(code));
+      if (!snap.exists()) {
+        showGateError("Trip not found — check the code and try again.");
+        joinTripBtn.disabled = false;
+        joinTripBtn.textContent = '🔗 Join Trip';
+        return;
+      }
+      enterTrip(code);
+    } catch (e) {
+      console.error(e);
+      showGateError('Could not join trip. Check your connection and try again.');
+      joinTripBtn.disabled = false;
+      joinTripBtn.textContent = '🔗 Join Trip';
+    }
+  });
+});
+
+function enterTrip(code) {
+  tripCode = code;
+  localStorage.setItem(LAST_TRIP_KEY, code);
+  tripCodeDisplay.textContent = code;
+  gateScreen.style.display = 'none';
+  startListening(code);
+}
+
+// ── leave trip ──
+tripBadge.addEventListener('click', () => leaveModal.classList.add('show'));
+leaveCancel.addEventListener('click', () => leaveModal.classList.remove('show'));
+leaveModal.addEventListener('click', e => { if (e.target===leaveModal) leaveModal.classList.remove('show'); });
+leaveConfirm.addEventListener('click', () => {
+  leaveModal.classList.remove('show');
+  if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+  localStorage.removeItem(LAST_TRIP_KEY);
+  tripCode = null;
+  // reset gate inputs
+  gateTripName.value = ''; gateTripCode.value = '';
+  gateError.style.display = 'none';
+  createTripBtn.disabled = false; createTripBtn.textContent = '✈️ Create Trip';
+  joinTripBtn.disabled = false; joinTripBtn.textContent = '🔗 Join Trip';
+  tabCreate.click();
+  gateScreen.style.display = 'flex';
+});
+
 // ════════ FRIENDS ════════
 addFriendBtn.addEventListener('click', () => { addFriend(); saveState(); });
+
+
 
 function addFriend(data) {
   const f = data || { id: nextFId++, name: '' };
@@ -1198,9 +1555,14 @@ document.getElementById('copyBtn').addEventListener('click', async () => {
 clearBtn.addEventListener('click', () => clearModal.classList.add('show'));
 modalCancel.addEventListener('click', () => clearModal.classList.remove('show'));
 clearModal.addEventListener('click', e => { if(e.target===clearModal) clearModal.classList.remove('show'); });
-modalConfirm.addEventListener('click', () => {
-  clearState();
+modalConfirm.addEventListener('click', async () => {
   clearModal.classList.remove('show');
+
+  friends  = [];
+  expenses = [];
+  nextFId  = 1;
+  nextEId  = 1;
+  paidForSelected.clear();
 
   // reset UI
   friendsList.innerHTML     = '';
@@ -1211,13 +1573,20 @@ modalConfirm.addEventListener('click', () => {
   document.getElementById('expDesc').value    = '';
   document.getElementById('expAmt').value     = '';
   document.getElementById('summary').style.display = 'none';
-  paidForSelected.clear();
   rebuildPayerSelect();
   showNoExpenses();
 
   // fresh start with 2 blank travellers
   addFriend(); addFriend();
-  showToast('🗑️ Trip cleared! Start fresh 🌟','var(--sky)','rgba(56,189,248,.3)');
+
+  // push the cleared state to Firestore immediately (not debounced) so it syncs now
+  if (tripCode && fb) {
+    try {
+      await fb.setDoc(tripDocRef(tripCode), snapshotPayload(), { merge: true });
+    } catch (e) { console.warn('Clear sync failed:', e); }
+  }
+
+  showToast('🗑️ Trip cleared for everyone! 🌟','var(--sky)','rgba(56,189,248,.3)');
 });
 
 // ════════ UTILS ════════
@@ -1234,23 +1603,22 @@ function esc(s) {
 
 // ════════ BOOT ════════
 (function init() {
-  const hadData = loadState();
-  if (hadData && friends.length) {
-    friends.forEach(f => renderFriendRow(f));
-    expenses.forEach(e => renderExpenseEntry(e));
-    rebuildPayerSelect();
-    updatePersonTotals();
-    if (!expenses.length) showNoExpenses();
-  } else {
-    showNoExpenses();
-    addFriend({ id: nextFId++, name: '' });
-    friends.push(friends[friends.length-1] || { id: nextFId++, name: '' });
-    // clean restart — render 2 blank rows
-    friendsList.innerHTML = '';
-    friends = [];
-    nextFId = 1;
-    addFriend(); addFriend();
-  }
+  showNoExpenses(); // placeholder until a trip loads
+
+  withFirebase(async () => {
+    const lastCode = localStorage.getItem(LAST_TRIP_KEY);
+    if (lastCode) {
+      try {
+        const snap = await fb.getDoc(tripDocRef(lastCode));
+        if (snap.exists()) {
+          enterTrip(lastCode);
+          return;
+        }
+      } catch (e) { /* fall through to gate screen */ }
+    }
+    // no remembered trip (or it no longer exists) — show gate screen
+    gateScreen.style.display = 'flex';
+  });
 })();
 </script>
 
