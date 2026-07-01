@@ -635,9 +635,7 @@ textarea{
 /* ════════ TRIP GATE SCREEN ════════ */
 #gateScreen{
   position:fixed;inset:0;z-index:400;
-  background:rgba(6,11,20,0.92);
-  backdrop-filter:blur(2px);
-  -webkit-backdrop-filter:blur(2px);
+  background:var(--bg);
   display:flex;align-items:center;justify-content:center;
   padding:20px;
 }
@@ -890,11 +888,11 @@ textarea{
     width:48px;height:48px;border-radius:50%;
     background:rgba(56,189,248,0.12);
     border:2px solid rgba(56,189,248,0.5);
-    color:var(--sky);font-size:26px;font-weight:900;line-height:1;
     display:none;align-items:center;justify-content:center;
     cursor:pointer;transition:all .2s;
     box-shadow:0 4px 20px rgba(56,189,248,0.2);
-  ">‹</button>
+    padding:0;
+  "><svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 7L10 14L17 21" stroke="#38bdf8" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 
   <div class="header">
     <div class="logo-wrap">
