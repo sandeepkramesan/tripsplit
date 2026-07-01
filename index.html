@@ -635,7 +635,9 @@ textarea{
 /* ════════ TRIP GATE SCREEN ════════ */
 #gateScreen{
   position:fixed;inset:0;z-index:400;
-  background:var(--bg);
+  background:rgba(6,11,20,0.92);
+  backdrop-filter:blur(2px);
+  -webkit-backdrop-filter:blur(2px);
   display:flex;align-items:center;justify-content:center;
   padding:20px;
 }
@@ -884,15 +886,15 @@ textarea{
   <!-- ── HEADER ── -->
   <!-- ── BACK BUTTON (fixed top-left, visible inside a trip) ── -->
   <button id="backBtn" title="Back to trips" style="
-    position:fixed;top:16px;left:16px;z-index:300;
-    width:42px;height:42px;border-radius:50%;
-    background:var(--card2);
-    border:1px solid var(--border2);
-    color:var(--sky);font-size:18px;
+    position:fixed;top:14px;left:14px;z-index:300;
+    width:48px;height:48px;border-radius:50%;
+    background:rgba(56,189,248,0.12);
+    border:2px solid rgba(56,189,248,0.5);
+    color:var(--sky);font-size:26px;font-weight:900;line-height:1;
     display:none;align-items:center;justify-content:center;
     cursor:pointer;transition:all .2s;
-    box-shadow:0 4px 16px rgba(0,0,0,.4);
-  ">←</button>
+    box-shadow:0 4px 20px rgba(56,189,248,0.2);
+  ">‹</button>
 
   <div class="header">
     <div class="logo-wrap">
@@ -1226,7 +1228,7 @@ function applyRemoteData(data) {
 
   friendsList.innerHTML = '';
   if (friends.length) friends.forEach(f => renderFriendRow(f));
-  else { addFriend(); addFriend(); }
+  else { addFriend(null, false); addFriend(null, true); }
 
   // re-render expense list
   expenseEntries.innerHTML = '';
@@ -1395,23 +1397,23 @@ function goToGateScreen() {
 
 switchTripBtn.addEventListener('click', goToGateScreen);
 backBtn.addEventListener('click', goToGateScreen);
-backBtn.addEventListener('mouseenter', () => { backBtn.style.background = 'rgba(56,189,248,0.15)'; backBtn.style.borderColor = 'rgba(56,189,248,0.4)'; });
-backBtn.addEventListener('mouseleave', () => { backBtn.style.background = 'var(--card2)'; backBtn.style.borderColor = 'var(--border2)'; });
+backBtn.addEventListener('mouseenter', () => { backBtn.style.background = 'rgba(56,189,248,0.25)'; backBtn.style.borderColor = 'rgba(56,189,248,0.8)'; backBtn.style.transform = 'scale(1.08)'; });
+backBtn.addEventListener('mouseleave', () => { backBtn.style.background = 'rgba(56,189,248,0.12)'; backBtn.style.borderColor = 'rgba(56,189,248,0.5)'; backBtn.style.transform = 'scale(1)'; });
 
 // ════════ FRIENDS ════════
 addFriendBtn.addEventListener('click', () => { addFriend(); saveState(); });
 
 
 
-function addFriend(data) {
+function addFriend(data, suppressFocus) {
   const f = data || { id: nextFId++, name: '' };
   if (!data) friends.push(f);
-  renderFriendRow(f);
+  renderFriendRow(f, suppressFocus);
   rebuildPayerSelect();
   updatePersonTotals();
 }
 
-function renderFriendRow(f) {
+function renderFriendRow(f, suppressFocus) {
   const row = document.createElement('div');
   row.className = 'friend-row';
   row.dataset.fid = f.id;
@@ -1450,7 +1452,7 @@ function renderFriendRow(f) {
   row.appendChild(inner);
   row.appendChild(del);
   friendsList.appendChild(row);
-  if (!f.name) inp.focus();
+  if (!f.name && !suppressFocus) inp.focus();
 }
 
 function rebuildPayerSelect() {
@@ -1881,7 +1883,7 @@ modalConfirm.addEventListener('click', async () => {
   showNoExpenses();
 
   // fresh start with 2 blank travellers
-  addFriend(); addFriend();
+  addFriend(null, false); addFriend(null, true);
 
   // push the cleared state to Firestore immediately (not debounced) so it syncs now
   if (tripCode && fb) {
