@@ -892,7 +892,7 @@ textarea{
     cursor:pointer;transition:all .2s;
     box-shadow:0 4px 20px rgba(56,189,248,0.2);
     padding:0;
-  "><svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 7L10 14L17 21" stroke="#38bdf8" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  "><svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M26 8L14 22L26 36" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 
   <div class="header">
     <div class="logo-wrap">
@@ -2023,17 +2023,44 @@ document.addEventListener('click', e => {
 
 if (!isStandalone && !alreadyDismissedToday()) {
   if (isIOS && isSafari) {
-    // iOS Safari never fires beforeinstallprompt — show instructional banner directly
+    // iOS Safari: beforeinstallprompt never fires — show instructions directly
     buildIOSBanner();
     setTimeout(() => { installBanner.style.display = 'flex'; }, 1200);
   } else {
-    // Android / desktop Chrome — wait for the native prompt event
+    // Android/Chrome: try native prompt first, fall back to manual instructions
+    // if Chrome suppresses the event (already dismissed before, criteria not met, etc.)
+    let nativePromptReceived = false;
+
     window.addEventListener('beforeinstallprompt', e => {
       e.preventDefault();
       deferredPrompt = e;
+      nativePromptReceived = true;
       buildAndroidBanner();
       installBanner.style.display = 'flex';
     });
+
+    // If no native prompt after 3s, show a manual "how to install" banner instead
+    setTimeout(() => {
+      if (!nativePromptReceived && !isStandalone && !alreadyDismissedToday()) {
+        installBanner.innerHTML = `
+          <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+            <span style="font-size:24px;flex-shrink:0">✈️</span>
+            <div style="min-width:0">
+              <div style="font-weight:700;font-size:13px;color:#e8f4ff">Install TripSplit</div>
+              <div style="font-size:11px;color:#5a7a9a;margin-top:1px">
+                Tap <strong style="color:#38bdf8">⋮ Menu</strong> →
+                <strong style="color:#38bdf8">Add to Home Screen</strong>
+              </div>
+            </div>
+          </div>
+          <button id="installNo" style="
+            background:transparent;border:none;color:#5a7a9a;
+            font-size:18px;cursor:pointer;padding:2px 4px;flex-shrink:0
+          ">✕</button>
+        `;
+        installBanner.style.display = 'flex';
+      }
+    }, 3000);
   }
 }
 
