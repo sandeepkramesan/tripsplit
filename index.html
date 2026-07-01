@@ -882,6 +882,18 @@ textarea{
 <div class="container">
 
   <!-- ── HEADER ── -->
+  <!-- ── BACK BUTTON (fixed top-left, visible inside a trip) ── -->
+  <button id="backBtn" title="Back to trips" style="
+    position:fixed;top:16px;left:16px;z-index:300;
+    width:42px;height:42px;border-radius:50%;
+    background:var(--card2);
+    border:1px solid var(--border2);
+    color:var(--sky);font-size:18px;
+    display:none;align-items:center;justify-content:center;
+    cursor:pointer;transition:all .2s;
+    box-shadow:0 4px 16px rgba(0,0,0,.4);
+  ">←</button>
+
   <div class="header">
     <div class="logo-wrap">
       <div class="logo-ring">
@@ -1023,6 +1035,22 @@ function rememberTrip(code, name) {
 
 function forgetTrip(code) {
   saveMyTrips(getMyTrips().filter(t => t.code !== code));
+  // if removing the currently active trip, reset the summary UI too
+  // (gate screen is open so summary isn't visible, but clear it so it
+  // doesn't flash stale data if the user rejoins or enters another trip)
+  if (code === tripCode) {
+    friends  = [];
+    expenses = [];
+    document.getElementById('summary').style.display = 'none';
+    document.getElementById('tripName').value = '';
+    friendsList.innerHTML    = '';
+    expenseEntries.innerHTML = '';
+    personTotals.innerHTML   = '';
+    personTotalsWrap.style.display = 'none';
+    rebuildPayerSelect();
+    showNoExpenses();
+    tripCode = null;
+  }
 }
 
 function renderMyTrips() {
@@ -1115,6 +1143,7 @@ const leaveModal       = document.getElementById('leaveModal');
 const leaveModalCode   = document.getElementById('leaveModalCode');
 const leaveCancel      = document.getElementById('leaveCancel');
 const switchTripBtn    = document.getElementById('switchTripBtn');
+const backBtn          = document.getElementById('backBtn');
 const myTripsSection   = document.getElementById('myTripsSection');
 const myTripsList      = document.getElementById('myTripsList');
 const exportBtn        = document.getElementById('exportBtn');
@@ -1318,6 +1347,24 @@ function enterTrip(code, isSwitch) {
   tripCodeDisplay.textContent = code;
   leaveModalCode.textContent = code;
   gateScreen.style.display = 'none';
+  backBtn.style.display = 'flex'; // show back button
+
+  // ── fully reset all UI so previous trip data never bleeds through ──
+  friends  = [];
+  expenses = [];
+  nextFId  = 1;
+  nextEId  = 1;
+  paidForSelected.clear();
+  friendsList.innerHTML    = '';
+  expenseEntries.innerHTML = '';
+  personTotals.innerHTML   = '';
+  personTotalsWrap.style.display  = 'none';
+  document.getElementById('summary').style.display = 'none';
+  document.getElementById('tripName').value = '';
+  document.getElementById('expDesc').value  = '';
+  document.getElementById('expAmt').value   = '';
+  rebuildPayerSelect();
+  showNoExpenses();
 
   // reset gate form state for next time it's shown
   gateTripName.value = ''; gateTripCode.value = '';
@@ -1335,14 +1382,21 @@ tripBadge.addEventListener('click', () => {
 });
 leaveCancel.addEventListener('click', () => leaveModal.classList.remove('show'));
 leaveModal.addEventListener('click', e => { if (e.target===leaveModal) leaveModal.classList.remove('show'); });
-switchTripBtn.addEventListener('click', () => {
+
+function goToGateScreen() {
   leaveModal.classList.remove('show');
   if (unsubscribe) { unsubscribe(); unsubscribe = null; }
   tripCode = null;
+  backBtn.style.display = 'none'; // hide back button
   renderMyTrips();
   tabCreate.click();
   gateScreen.style.display = 'flex';
-});
+}
+
+switchTripBtn.addEventListener('click', goToGateScreen);
+backBtn.addEventListener('click', goToGateScreen);
+backBtn.addEventListener('mouseenter', () => { backBtn.style.background = 'rgba(56,189,248,0.15)'; backBtn.style.borderColor = 'rgba(56,189,248,0.4)'; });
+backBtn.addEventListener('mouseleave', () => { backBtn.style.background = 'var(--card2)'; backBtn.style.borderColor = 'var(--border2)'; });
 
 // ════════ FRIENDS ════════
 addFriendBtn.addEventListener('click', () => { addFriend(); saveState(); });
@@ -1765,28 +1819,31 @@ importFileInput.addEventListener('change', async (e) => {
     withFirebase(async () => {
       try {
         const ref = tripDocRef(data.tripCode);
-        const snap = await fb.getDoc(ref);
 
-        if (snap.exists()) {
-          // trip already exists in the cloud (e.g. group is still active) — just join it,
-          // don't overwrite live data with a possibly-stale export
-          rememberTrip(data.tripCode, snap.data().tripName || data.tripName);
-          enterTrip(data.tripCode);
-          showToast('📂 Trip found in the cloud — joined it!','var(--mint)','rgba(52,211,153,.3)');
-        } else {
-          // trip no longer exists remotely — recreate it from the export file
-          await fb.setDoc(ref, {
-            tripName: data.tripName || 'Unnamed Trip',
-            friends:  data.friends  || [],
-            expenses: data.expenses || [],
-            nextFId:  data.nextFId  || 1,
-            nextEId:  data.nextEId  || 1,
-            createdAt: fb.serverTimestamp()
-          });
-          rememberTrip(data.tripCode, data.tripName || 'Unnamed Trip');
-          enterTrip(data.tripCode);
-          showToast('📂 Trip restored from file!','var(--lime)','rgba(163,230,53,.3)');
-        }
+        // Write file data to Firestore first
+        await fb.setDoc(ref, {
+          tripName: data.tripName || 'Unnamed Trip',
+          friends:  data.friends  || [],
+          expenses: data.expenses || [],
+          nextFId:  data.nextFId  || 1,
+          nextEId:  data.nextEId  || 1,
+          updatedAt: fb.serverTimestamp()
+        });
+
+        // Seed local state immediately from the file so the UI renders right
+        // away — don't wait for the onSnapshot round-trip which may arrive
+        // after a brief delay and could briefly show a blank/stale state.
+        rememberTrip(data.tripCode, data.tripName || 'Unnamed Trip');
+        enterTrip(data.tripCode); // resets UI and starts listener
+        // apply file data directly into the now-blank UI
+        applyRemoteData({
+          tripName: data.tripName,
+          friends:  data.friends  || [],
+          expenses: data.expenses || [],
+          nextFId:  data.nextFId  || 1,
+          nextEId:  data.nextEId  || 1,
+        });
+        showToast('📂 Trip restored from file!','var(--lime)','rgba(163,230,53,.3)');
       } catch (err) {
         console.error(err);
         showGateError('Could not import trip. Check your connection and try again.');
